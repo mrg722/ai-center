@@ -384,3 +384,13 @@ begin
     execute format('alter table %I enable row level security', t);
   end loop;
 end $$;
+
+
+-- ─────────────────────────────────────────────────────────────── provider session persistence
+alter table agent_sessions add column if not exists provider_session_id text;
+create index if not exists agent_sessions_provider_session_idx on agent_sessions (agent_id, provider_session_id) where provider_session_id is not null;
+
+
+-- Existing installs: prefer account-authenticated Google Antigravity for the seeded Gemini agent.
+update agents set runtime='antigravity', transport='local-bridge'
+ where slug='gemini' and runtime='gemini' and transport='http-api';

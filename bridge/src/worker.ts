@@ -9,6 +9,7 @@ import { workspaceState, commit as gitCommit, push as gitPush, installPushGuard,
 import type { Runner } from './runners/types.js';
 import { claudeCodeRunner } from './runners/claude-code.js';
 import { codexRunner } from './runners/codex.js';
+import { antigravityRunner } from './runners/antigravity.js';
 import { commandRunner } from './runners/command.js';
 import { echoRunner } from './runners/echo.js';
 import { PROTOCOL_VERSION } from '../../src/shared/protocol.js';
@@ -31,6 +32,8 @@ export function makeRunner(cfg: BridgeConfig): Runner {
       return claudeCodeRunner(cfg.runnerBin ?? 'claude');
     case 'codex':
       return codexRunner(cfg.runnerBin ?? 'codex');
+    case 'antigravity':
+      return antigravityRunner(cfg.runnerBin ?? 'agy');
     case 'command':
       return commandRunner(cfg.command ?? []);
     default:
@@ -193,6 +196,7 @@ export class BridgeWorker {
         workspace: this.cfg.workspace,
         mcpConfigPath,
         mcpServer,
+        providerSessionId: this.hello.provider_session_id ?? null,
         signal: this.abort.signal,
         maxRunSeconds: this.cfg.maxRunSeconds,
         extraArgs: this.cfg.runnerArgs,
@@ -206,6 +210,7 @@ export class BridgeWorker {
       await this.client.ack(item.delivery_id, {
         status: 'DONE',
         result_text: out.text.slice(0, 60_000),
+        provider_session_id: out.providerSessionId,
         workspace: this.workspace,
         run: {
           started_at: started.toISOString(),

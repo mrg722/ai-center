@@ -10,7 +10,7 @@ import { runProcess, which } from './proc.js';
  * - Tool permissions are derived from the agent's permission set. Git commit
  *   / push are always routed through `acc_git_request`, never run directly.
  */
-export function buildClaudeArgs(input: Pick<RunInput, 'agent' | 'mcpConfigPath' | 'extraArgs'>): string[] {
+export function buildClaudeArgs(input: Pick<RunInput, 'agent' | 'mcpConfigPath' | 'extraArgs' | 'providerSessionId'>): string[] {
   const p = input.agent.permissions;
   const allowed = ['Read', 'Grep', 'Glob', 'LS', 'TodoWrite', 'WebSearch', 'WebFetch', 'mcp__acc'];
   if (p.write) allowed.push('Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'Bash');
@@ -28,6 +28,7 @@ export function buildClaudeArgs(input: Pick<RunInput, 'agent' | 'mcpConfigPath' 
   if (!p.dangerous_operations) disallowed.push('Bash(rm -rf:*)', 'Bash(sudo:*)', 'Bash(curl:*)', 'Bash(wget:*)');
 
   const args = [
+    ...(input.providerSessionId ? ['-r', input.providerSessionId] : []),
     '-p',
     '--output-format',
     'stream-json',
@@ -55,6 +56,7 @@ interface StreamEvent {
   result?: string;
   is_error?: boolean;
   usage?: { input_tokens?: number; output_tokens?: number };
+  session_id?: string;
   message?: { content?: { type: string; text?: string; name?: string; input?: unknown }[] };
 }
 
@@ -77,6 +79,7 @@ export const claudeCodeRunner = (bin = 'claude'): Runner => ({
     let lastAssistantText = '';
     let tokensIn: number | undefined;
     let tokensOut: number | undefined;
+    let providerSessionId: string | undefined;
     let isError = false;
     input.onStatus(input.item.message.message_type === 'REVIEW' ? 'REVIEWING' : 'THINKING');
 
@@ -90,6 +93,7 @@ export const claudeCodeRunner = (bin = 'claude'): Runner => ({
       onLine: (line) => {
         const ev = parseClaudeLine(line);
         if (!ev) return;
+        if (ev.session_id) providerSessionId = ev.session_id;
         if (ev.type === 'assistant') {
           for (const block of ev.message?.content ?? []) {
             if (block.type === 'text' && block.text) {
@@ -117,7 +121,7 @@ export const claudeCodeRunner = (bin = 'claude'): Runner => ({
     if (res.code !== 0 || isError) {
       throw new Error(`claude exited with code ${res.code}: ${(finalText || res.stderr).slice(0, 1000)}`);
     }
-    return { text: finalText || lastAssistantText, tokens_in: tokensIn, tokens_out: tokensOut };
+    return { text: finalText || lastAssistantText, tokens_in: tokensIn, tokens_out: tokensOut, providerSessionId };
   },
 });
 

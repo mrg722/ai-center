@@ -65,6 +65,8 @@ export interface HelloRequest {
 export interface HelloResponse {
   agent: AgentIdentity;
   session_id: string;
+  /** Provider conversation/session ID persisted across bridge reconnects when supported. */
+  provider_session_id: string | null;
   heartbeat_interval_s: number;
   mode: Mode;
   halted: boolean;
@@ -158,6 +160,8 @@ export interface AckRequest {
   };
   /** final output from the agent; stored as a RESULT/ERROR message */
   result_text?: string;
+  /** Provider conversation/session ID returned by a local runtime. */
+  provider_session_id?: string;
   workspace?: WorkspaceState;
 }
 

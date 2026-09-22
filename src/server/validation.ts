@@ -147,6 +147,7 @@ export const ackSchema = z.object({
   status: z.enum(['DONE', 'FAILED']),
   error: text(8000).optional(),
   result_text: text(100_000).optional(),
+  provider_session_id: text(500).optional(),
   workspace: workspaceSchema.optional(),
   run: z
     .object({

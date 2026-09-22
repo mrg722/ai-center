@@ -66,7 +66,7 @@ describe('orchestrator', () => {
     const views = await agentViews(db, project);
     // no bridge connected / no API key → honest OFFLINE, never faked
     expect(views.find((v) => v.slug === 'claude')!.status).toBe('OFFLINE');
-    expect(views.find((v) => v.slug === 'gemini')!.status_reason).toMatch(/GEMINI_API_KEY/);
+    expect(views.find((v) => v.slug === 'gemini')!.status_reason).toMatch(/bridge token|bridge/i);
   });
 
   it('task → delivery → bridge claim builds a budgeted context and starts the task', async () => {
@@ -210,6 +210,7 @@ describe('orchestrator', () => {
 
   it('hosted agent without API key fails the delivery with a clear reason (no fake answer)', async () => {
     delete process.env.GEMINI_API_KEY;
+    await db.query(`update agents set runtime='gemini', transport='http-api' where id=$1`, [gemini.id]);
     const t = await createTask(db, { project, actor: user, title: 'research', assignedAgentId: gemini.id });
     await drainHostedQueue();
     const err = await db.query<{ content: string }>(`select content from messages where task_id=$1 and message_type='ERROR'`, [t.id]);
@@ -218,6 +219,7 @@ describe('orchestrator', () => {
 
   it('paid API budget is enforced by policy before calling the provider', async () => {
     process.env.GEMINI_API_KEY = 'test-key-not-used';
+    await db.query(`update agents set runtime='gemini', transport='http-api' where id=$1`, [gemini.id]);
     await db.query(`update projects set settings = settings || '{"daily_token_budget": 10}'::jsonb where id=$1`, [project.id]);
     await db.query(`insert into agent_runs (agent_id, status, tokens_in, tokens_out, started_at) values ($1,'SUCCEEDED',8,5,now())`, [gemini.id]);
     const t = await createTask(db, { project, actor: user, title: 'research', assignedAgentId: gemini.id });

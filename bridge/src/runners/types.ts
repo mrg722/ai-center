@@ -6,6 +6,8 @@ export interface RunInput {
   workspace: string;
   /** Path to a 0600 MCP config file for this run (Claude Code format), if any. */
   mcpConfigPath: string | null;
+  /** Provider conversation/session identifier persisted by ACC, when supported by the runtime. */
+  providerSessionId?: string | null;
   /** Arguments to start the ACC MCP server (for runners that configure MCP by args). */
   mcpServer: { command: string; args: string[] } | null;
   signal: AbortSignal;
@@ -23,6 +25,8 @@ export interface RunOutput {
   text: string;
   tokens_in?: number;
   tokens_out?: number;
+  /** Provider conversation/session identifier returned by the runtime, when available. */
+  providerSessionId?: string;
 }
 
 export interface Runner {

@@ -38,6 +38,16 @@ const codex: RuntimeDescriptor = {
   description: 'Codex CLI on your machine. Audits, fixes, verifies and integrates changes.',
   capabilities: ['read', 'write', 'tests.run', 'shell', 'code.review', 'mcp'],
 };
+const antigravity: RuntimeDescriptor = {
+  id: 'antigravity',
+  label: 'Google Antigravity (local bridge)',
+  provider: { id: 'google', name: 'Google' },
+  runtime: 'Antigravity CLI',
+  transport: 'local-bridge',
+  bridgeRunner: 'antigravity',
+  description: 'Google Antigravity CLI authenticated with a Google account; no Gemini API key required.',
+  capabilities: ['read', 'write', 'tests.run', 'shell', 'browser.playwright', 'research', 'mcp'],
+};
 const localCommand: RuntimeDescriptor = {
   id: 'local-command',
   label: 'Local command (bridge)',
@@ -63,6 +73,7 @@ export const simulatorRuntime: RuntimeDescriptor = {
 const ALL: Runtime[] = [
   claudeCode,
   codex,
+  antigravity,
   localCommand,
   anthropicProvider,
   openaiProvider,

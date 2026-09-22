@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export type RunnerName = 'claude-code' | 'codex' | 'command' | 'echo';
+export type RunnerName = 'claude-code' | 'codex' | 'antigravity' | 'command' | 'echo';
 
 export interface BridgeConfig {
   url: string;
@@ -20,7 +20,7 @@ export interface BridgeConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 
-const RUNNERS: RunnerName[] = ['claude-code', 'codex', 'command', 'echo'];
+const RUNNERS: RunnerName[] = ['claude-code', 'codex', 'antigravity', 'command', 'echo'];
 
 /**
  * Configuration comes from (lowest → highest priority):

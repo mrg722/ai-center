@@ -5,7 +5,7 @@ import { useLive } from '@/lib/client/live';
 import { api } from '@/lib/client/api';
 import type { RuntimeInfo } from '@/lib/client/types';
 import type { ToolServerConfig } from '@/shared/protocol';
-import { Button, cx, Empty, Field, inputCls, Panel } from '@/components/ui';
+import { Button, cx, Empty, Field, inputCls, Panel, StatusDot } from '@/components/ui';
 import { Markdown } from '@/components/Markdown';
 
 interface Doc {
@@ -112,40 +112,78 @@ function ProjectForm() {
 }
 
 function ProvidersPanel() {
+  const { snap } = useLive();
   const [providers, setProviders] = useState<RuntimeInfo[]>([]);
   useEffect(() => {
     api<{ runtimes: RuntimeInfo[] }>('/api/providers').then((r) => setProviders(r.runtimes)).catch(() => undefined);
   }, []);
+
+  const connectionLabel = (status: string, transport: string) => {
+    if (transport === 'local-bridge') {
+      if (status === 'ONLINE' || status === 'WORKING' || status === 'THINKING' || status === 'REVIEWING' || status === 'WAITING') return 'CONECTADO';
+      if (status === 'BLOCKED') return 'BLOQUEADO';
+      return 'SIN BRIDGE';
+    }
+    if (status === 'ERROR') return 'ERROR';
+    return status === 'OFFLINE' ? 'NO LISTO' : 'LISTO';
+  };
+
   return (
-    <Panel title="Runtimes de IA (proveedor · runtime · transporte)" bodyClass="overflow-y-auto max-h-[420px]">
-      <p className="px-3 pt-3 text-[11px] text-fg-dim">Las claves viven en variables de entorno del servidor; aquí solo se muestra si están presentes. Los agentes bridge usan la autenticación de su CLI local.</p>
-      <table className="mt-2 w-full text-left text-[12px]">
-        <tbody>
-          {providers.map((p) => (
-            <tr key={p.id} className="border-t border-line">
-              <td className="px-3 py-1.5">
-                <div>{p.label}</div>
-                <div className="text-[10px] text-fg-dim">
-                  {p.provider.name} · {p.runtime} · <span className="font-mono">{p.transport}</span>
-                  {p.paid ? ' · de pago' : ''}
-                </div>
-              </td>
-              <td className="px-3 py-1.5 font-mono text-[11px] text-fg-dim">{p.apiKeyEnv ?? (p.transport === 'local-bridge' ? 'CLI login' : 'opcional')}</td>
-              <td className="px-3 py-1.5 text-right">
-                {p.transport === 'local-bridge' ? (
-                  <span className="text-[11px] text-fg-dim">vía token</span>
-                ) : p.apiKeyPresent ? (
-                  <span className="text-[11px] text-st-online">configurado</span>
-                ) : p.apiKeyOptional ? (
-                  <span className="text-[11px] text-fg-dim">sin clave</span>
-                ) : (
-                  <span className="text-[11px] text-st-blocked">falta clave</span>
-                )}
-              </td>
-            </tr>
+    <Panel title="Conexiones de IA" bodyClass="overflow-y-auto max-h-[520px]">
+      <div className="p-3">
+        <p className="text-[11px] text-fg-dim">
+          Estado real de cada agente. Los runtimes de bridge usan la autenticación de su CLI local; las APIs HTTP usan variables de entorno del servidor.
+          CONECTADO significa que el bridge está vivo; LISTO significa que el runtime HTTP está configurado.
+        </p>
+
+        <div className="mt-3 grid gap-2">
+          {snap?.agents.map((a) => (
+            <div key={a.id} className="rounded-lg border border-line bg-ink-850 p-2.5">
+              <div className="flex items-center gap-2">
+                <StatusDot status={a.status} size={7} />
+                <span className="font-medium" style={{ color: a.color }}>{a.name}</span>
+                <span className="ml-auto rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[9px] text-fg-dim">{connectionLabel(a.status, a.transport)}</span>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-fg-dim">
+                <span>{a.provider.name}</span>
+                <span>{a.runtime_label}</span>
+                <span className="font-mono">{a.transport}</span>
+                {a.status_reason && <span className="text-fg-muted">{a.status_reason}</span>}
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+
+        <div className="mt-4 border-t border-line pt-3">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-dim">Catálogo de runtimes</div>
+          <table className="w-full text-left text-[12px]">
+            <tbody>
+              {providers.map((p) => (
+                <tr key={p.id} className="border-t border-line">
+                  <td className="px-2 py-1.5">
+                    <div>{p.label}</div>
+                    <div className="text-[10px] text-fg-dim">
+                      {p.provider.name} · {p.runtime} · <span className="font-mono">{p.transport}</span>{p.paid ? ' · de pago' : ''}
+                    </div>
+                  </td>
+                  <td className="px-2 py-1.5 font-mono text-[10px] text-fg-dim">{p.apiKeyEnv ?? (p.transport === 'local-bridge' ? 'CLI login' : 'opcional')}</td>
+                  <td className="px-2 py-1.5 text-right">
+                    {p.transport === 'local-bridge' ? (
+                      <span className="text-[10px] text-fg-dim">bridge</span>
+                    ) : p.apiKeyPresent ? (
+                      <span className="text-[10px] text-st-online">configurado</span>
+                    ) : p.apiKeyOptional ? (
+                      <span className="text-[10px] text-fg-dim">sin clave</span>
+                    ) : (
+                      <span className="text-[10px] text-st-blocked">falta clave</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </Panel>
   );
 }
