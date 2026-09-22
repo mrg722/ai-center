@@ -15,11 +15,17 @@ import { toInboxItems } from './runs';
 export async function bridgeHello(db: Db, agent: AgentRow, req: HelloRequest): Promise<HelloResponse> {
   if (agent.transport !== 'local-bridge') throw new BadRequest('This agent does not use the local-bridge transport.');
   const project = await getProjectById(db, agent.project_id);
-  // one live session per agent: close previous ones
+  // one live session per agent: close previous ones, but preserve the provider
+  // conversation/session id so reconnects can resume the same AI thread.
+  const previous = await db.query<{ provider_session_id: string | null }>(
+    `select provider_session_id from agent_sessions where agent_id=$1 and provider_session_id is not null order by last_heartbeat_at desc limit 1`,
+    [agent.id],
+  );
+  const providerSessionId = previous.rows[0]?.provider_session_id ?? null;
   await db.query(`update agent_sessions set ended_at=now() where agent_id=$1 and ended_at is null`, [agent.id]);
   const s = await db.query<SessionRow>(
-    `insert into agent_sessions (agent_id, status, workspace, tools, client_version) values ($1,'ONLINE',$2,$3,$4) returning *`,
-    [agent.id, JSON.stringify(req.workspace ?? {}), JSON.stringify(req.tools ?? []), `${req.client_version} · ${req.runner}`.slice(0, 200)],
+    `insert into agent_sessions (agent_id, status, provider_session_id, workspace, tools, client_version) values ($1,'ONLINE',$2,$3,$4,$5) returning *`,
+    [agent.id, providerSessionId, JSON.stringify(req.workspace ?? {}), JSON.stringify(req.tools ?? []), `${req.client_version} · ${req.runner}`.slice(0, 200)],
   );
   await emit(db, {
     project_id: project.id,
@@ -41,6 +47,7 @@ export async function bridgeHello(db: Db, agent: AgentRow, req: HelloRequest): P
       permissions: await effectivePermissions(db, agent.id),
     },
     session_id: s.rows[0].id,
+    provider_session_id: s.rows[0].provider_session_id,
     heartbeat_interval_s: HEARTBEAT_INTERVAL_S,
     mode: project.mode,
     halted: project.halted,
