@@ -9,6 +9,7 @@ import { workspaceState, commit as gitCommit, push as gitPush, installPushGuard,
 import type { Runner } from './runners/types.js';
 import { claudeCodeRunner } from './runners/claude-code.js';
 import { codexRunner } from './runners/codex.js';
+import { antigravityRunner } from './runners/antigravity.js';
 import { commandRunner } from './runners/command.js';
 import { echoRunner } from './runners/echo.js';
 import { PROTOCOL_VERSION } from '../../src/shared/protocol.js';
@@ -31,6 +32,8 @@ export function makeRunner(cfg: BridgeConfig): Runner {
       return claudeCodeRunner(cfg.runnerBin ?? 'claude');
     case 'codex':
       return codexRunner(cfg.runnerBin ?? 'codex');
+    case 'antigravity':
+      return antigravityRunner(cfg.runnerBin ?? 'agy');
     case 'command':
       return commandRunner(cfg.command ?? []);
     default:
