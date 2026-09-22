@@ -33,6 +33,8 @@ export function OfficeCanvas({
   const cam = useRef<Camera>({ x: WORLD.w / 2, y: WORLD.h / 2, zoom: 1 });
   const target = useRef<Camera | null>(null);
   const fitted = useRef(false);
+  const lastSize = useRef<{ w: number; h: number } | null>(null);
+  const userCamera = useRef(false);
   const hover = useRef<string | null>(null);
   const [cursor, setCursor] = useState('grab');
 
@@ -123,11 +125,15 @@ export function OfficeCanvas({
       cv.height = Math.max(1, Math.floor(el.clientHeight * dpr));
       cv.style.width = `${el.clientWidth}px`;
       cv.style.height = `${el.clientHeight}px`;
-      if (!fitted.current || compact) {
+      const sizeChanged = !lastSize.current ||
+        Math.abs(lastSize.current.w - el.clientWidth) > 8 ||
+        Math.abs(lastSize.current.h - el.clientHeight) > 8;
+      if (( !fitted.current || (!userCamera.current && sizeChanged) || compact) && el.clientWidth > 0 && el.clientHeight > 0) {
         fit();
         if (target.current) cam.current = { ...target.current };
         fitted.current = true;
       }
+      lastSize.current = { w: el.clientWidth, h: el.clientHeight };
     };
     const ro = new ResizeObserver(resize);
     ro.observe(el);
@@ -269,6 +275,7 @@ export function OfficeCanvas({
           if (d.moved) {
             const c = cam.current;
             target.current = null;
+            userCamera.current = true;
             cam.current = clamp({ ...c, x: c.x - dx / c.zoom, y: c.y - dy / c.zoom });
             d.x = e.clientX;
             d.y = e.clientY;
@@ -300,12 +307,14 @@ export function OfficeCanvas({
         const id = hitTest(layout, w.x, w.y);
         if (id) {
           onSelect?.(id);
+          userCamera.current = true;
           focus(id);
         } else zoomAt(e.clientX, e.clientY, 1.6);
       }}
       onKeyDown={(e) => {
         const c = cam.current;
         const step = 40 / c.zoom;
+        userCamera.current = true;
         if (e.key === 'ArrowLeft') cam.current = clamp({ ...c, x: c.x - step });
         else if (e.key === 'ArrowRight') cam.current = clamp({ ...c, x: c.x + step });
         else if (e.key === 'ArrowUp') cam.current = clamp({ ...c, y: c.y - step });
