@@ -1,9 +1,18 @@
-import nextVitals from 'eslint-config-next/core-web-vitals.js';
-import nextTs from 'eslint-config-next/typescript.js';
-import { globalIgnores } from 'eslint/config';
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
 
-export default [
-  nextVitals,
-  nextTs,
-  globalIgnores(['.next/**','node_modules/**','dist/**','coverage/**','.data/**']),
-];
+export default tseslint.config(
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+      },
+    },
+  },
+  {
+    ignores: ['.next/**', 'node_modules/**', 'dist/**', 'coverage/**', '.data/**'],
+  },
+);
