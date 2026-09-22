@@ -16,5 +16,25 @@
     "bridge:build": "npm --prefix bridge run build",
     "setup:env": "node scripts/setup-env.mjs",
     "db:migrate": "node scripts/migrate.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.8",
+    "next": "^15.5.4",
+    "pg": "^8.13.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.36.0",
+    "eslint-config-next": "^15.5.4",
+    "tailwindcss": "^4.1.14",
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.4"
   }
 }
