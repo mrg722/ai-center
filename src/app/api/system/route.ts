@@ -13,7 +13,7 @@ export const POST = userRoute(async ({ req, db, user }) => {
   const body = await readJson(req, systemControlSchema);
   const project = await requireProject(db);
   const actor = userActor(user);
-  if (body.op === 'stop_all') await stopAll(db, project, actor, body.reason);
+  if (body.op === 'stop_all') await stopAll(db, project, actor, body.reason ?? '');
   else if (body.op === 'resume_all') {
     await resumeAll(db, project, actor);
     after(() => drainHostedQueue());
