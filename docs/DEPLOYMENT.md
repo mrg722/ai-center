@@ -3,7 +3,7 @@
 ## Infraestructura objetivo
 
 - Frontend/backend web: Vercel + Next.js.
-- Base de datos, autenticación y tiempo real: Supabase.
+- Base de datos y PostgreSQL gestionado: Supabase. Tiempo real hacia el navegador: SSE del backend.
 - Código del proyecto: GitHub.
 - Agentes locales: Agent Bridge en la máquina del usuario.
 
