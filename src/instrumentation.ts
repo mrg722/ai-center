@@ -1,21 +1,28 @@
 /**
  * Runs once per server instance. On long-running servers (local dev,
- * `next start`, Docker) it polls the hosted-agent queue so API agents answer
- * even if a request's after() hook was missed. Disable with
- * ACC_INPROCESS_WORKER=false (serverless deployments rely on after() + cron).
+ * `next start`, Docker) it periodically ticks the hosted-agent queue and
+ * presence sweeper through the protected HTTP endpoint instead of importing
+ * Node-only database drivers into Next's special instrumentation bundle.
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
   const enabled = (process.env.ACC_INPROCESS_WORKER ?? (process.env.NODE_ENV === 'production' ? 'false' : 'true')) === 'true';
   if (!enabled) return;
-  const { drainHostedQueue } = await import('./server/orchestrator/hosted');
-  const { sweepPresence } = await import('./server/orchestrator/bridge');
-  const { getDb } = await import('./server/db');
-  const timer = setInterval(() => {
-    drainHostedQueue().catch((e) => console.error('[acc] hosted worker', e));
-    getDb()
-      .then((db) => sweepPresence(db))
-      .catch((e) => console.error('[acc] presence sweep', e));
-  }, 5000);
+
+  const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    console.warn('[acc] in-process worker disabled: CRON_SECRET is missing');
+    return;
+  }
+
+  const tick = () => {
+    fetch(new URL('/api/cron/tick', appUrl), {
+      headers: { authorization: `Bearer ${secret}` },
+      cache: 'no-store',
+    }).catch((e) => console.error('[acc] worker tick', e));
+  };
+
+  const timer = setInterval(tick, 5000);
   timer.unref?.();
 }
