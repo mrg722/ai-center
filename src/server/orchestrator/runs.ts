@@ -55,6 +55,7 @@ export interface CompleteInput {
   tokensOut?: number;
   outputChars?: number;
   summary?: string;
+  providerSessionId?: string;
 }
 
 /** Shared completion path for bridge acks and hosted runs. */
@@ -88,6 +89,9 @@ export async function completeDelivery(db: Db, agent: AgentRow, deliveryId: stri
       (c.summary ?? '').slice(0, 300),
     ],
   );
+  if (c.providerSessionId) {
+    await db.query(`update agent_sessions set provider_session_id=$2 where agent_id=$1 and ended_at is null`, [agent.id, c.providerSessionId.slice(0, 500)]);
+  }
   await refreshMessageStatus(db, message.id);
 
   if (message.message_type !== 'COMMAND') {
