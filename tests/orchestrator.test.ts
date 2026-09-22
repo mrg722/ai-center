@@ -262,6 +262,9 @@ describe('orchestrator', () => {
   });
 
   it('snapshot exposes no secrets and carries the server-computed system state', async () => {
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
     await issueToken(db, claude, user);
     const snap = await snapshot(db, project);
     expect(snap.system.state).toBe('NO_AGENTS');
