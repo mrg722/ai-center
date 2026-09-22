@@ -1,0 +1,1000 @@
+Quiero que seas el ARQUITECTO PRINCIPAL, DESARROLLADOR PRINCIPAL y AGENTE DE IMPLEMENTACIÓN de este proyecto.
+
+Tu misión es construir una aplicación web completa llamada provisionalmente:
+
+AI COMMAND CENTER
+
+El objetivo es crear un centro de mando multiagente donde yo, como usuario y moderador, pueda ver, controlar y coordinar varias IAs desde una sola página web.
+
+NO QUIERO un simple mockup, una landing page ni una demostración estática.
+
+Quiero una aplicación funcional, modular, mantenible y preparada para producción, empezando por un MVP completo y extensible.
+
+==================================================
+1. OBJETIVO GENERAL
+==================================================
+
+Construir una plataforma donde puedan coexistir:
+
+- Claude
+- GPT / Codex
+- Gemini
+- futuras IAs externas por API
+- futuras IAs locales
+- otros agentes compatibles con MCP
+- herramientas externas conectadas mediante MCP
+
+La plataforma debe permitir que:
+
+1. Yo escriba una tarea.
+2. El orquestador cree una tarea formal.
+3. Una IA reciba la tarea.
+4. Esa IA pueda analizarla y trabajar.
+5. Esa IA pueda enviar un mensaje o solicitud a otra IA.
+6. El orquestador entregue ese mensaje al agente correspondiente.
+7. Las IAs puedan conversar entre sí.
+8. Yo pueda observar esa conversación.
+9. Yo pueda intervenir como moderador en cualquier momento.
+10. Yo pueda pausar, cancelar, aprobar o redirigir una tarea.
+11. Los agentes puedan trabajar con el mismo proyecto GitHub.
+12. Los cambios queden asociados a tareas, commits y agentes.
+13. GPT/Codex pueda auditar cambios, corregirlos y realizar commit/push cuando tenga autorización.
+14. Claude sea principalmente el agente de implementación y trabajo pesado.
+15. Gemini sea un agente opcional de investigación, segunda opinión y análisis adicional.
+16. La arquitectura quede preparada para añadir otras IAs sin reescribir el sistema.
+
+==================================================
+2. ARQUITECTURA OBLIGATORIA
+==================================================
+
+Usa una arquitectura separada en:
+
+FRONTEND
+BACKEND / ORCHESTRATOR
+DATABASE
+AGENT BRIDGE / WORKERS
+GITHUB
+AI PROVIDERS
+MCP TOOLS
+
+Propuesta tecnológica inicial:
+
+- Next.js
+- TypeScript
+- React
+- Tailwind CSS o una solución equivalente mantenible
+- Supabase / PostgreSQL
+- Vercel para despliegue
+- GitHub como fuente de verdad del código
+- MCP para herramientas externas
+- WebSocket/SSE/Realtime para eventos en tiempo real
+
+No acoples la aplicación a un solo proveedor.
+
+Debe ser posible añadir:
+
+OpenAI
+Anthropic
+Google
+Perplexity
+Firecrawl
+Ollama
+LM Studio
+Qwen
+DeepSeek
+Mistral
+OpenRouter
+otras APIs
+otros MCP
+otros agentes locales
+
+sin rediseñar el núcleo.
+
+==================================================
+3. CONCEPTO FUNDAMENTAL
+==================================================
+
+No quiero que las IAs se llamen directamente entre sí.
+
+Quiero:
+
+AGENTE A
+   ↓
+ORQUESTADOR
+   ↓
+AGENTE B
+
+El orquestador será la autoridad técnica que:
+
+- crea tareas
+- enruta mensajes
+- mantiene estados
+- mantiene contexto
+- valida permisos
+- registra eventos
+- controla quién puede escribir
+- controla quién puede hacer commit
+- controla quién puede hacer push
+- permite intervención humana
+- mantiene historial
+
+El agente nunca deberá obtener directamente las credenciales privadas de otro agente.
+
+==================================================
+4. ROLES DE LOS AGENTES
+==================================================
+
+Crear un sistema de agentes configurable.
+
+AGENTE CLAUDE
+Rol por defecto:
+PRIMARY BUILDER
+
+Responsabilidades:
+
+- analizar el proyecto
+- leer muchos archivos
+- investigar arquitectura
+- implementar funcionalidades
+- refactorizar
+- corregir bugs
+- trabajar sobre el repositorio local
+- ejecutar pruebas
+- utilizar Playwright
+- utilizar Firecrawl cuando corresponda
+- utilizar Perplexity cuando corresponda
+- dejar cambios preparados
+- solicitar revisión cuando corresponda
+
+Permisos iniciales:
+
+read = true
+write = true
+commit = true
+push = false
+merge = false
+dangerous_operations = false
+
+
+AGENTE GPT / CODEX
+Rol por defecto:
+AUDITOR + INTEGRATOR
+
+Responsabilidades:
+
+- revisar el trabajo de Claude
+- buscar errores
+- buscar regresiones
+- revisar arquitectura
+- revisar código
+- ejecutar pruebas
+- corregir errores
+- verificar cambios
+- preparar commit
+- realizar push cuando el sistema lo permita
+- preparar Pull Request cuando corresponda
+
+Permisos iniciales:
+
+read = true
+write = true
+commit = true
+push = true
+merge = false
+dangerous_operations = false
+
+
+AGENTE GEMINI
+Rol por defecto:
+RESEARCHER / SECOND OPINION
+
+Responsabilidades:
+
+- investigación
+- alternativas técnicas
+- comparación de soluciones
+- análisis adicional
+- segunda opinión
+- revisión opcional
+
+Permisos iniciales:
+
+read = true
+write = false
+commit = false
+push = false
+merge = false
+
+
+El sistema debe permitir modificar estos permisos.
+
+==================================================
+5. MODERADOR HUMANO
+==================================================
+
+Yo soy el usuario principal y MODERADOR.
+
+Debo poder:
+
+- crear tareas
+- asignarlas
+- reasignarlas
+- enviar mensajes a una IA
+- enviar mensajes a todas
+- pausar una IA
+- detener una tarea
+- cancelar una cadena
+- aprobar cambios
+- rechazar cambios
+- conceder permisos temporales
+- revocar permisos
+- cambiar el agente responsable
+- ordenar una nueva revisión
+- aprobar un push
+- bloquear un push
+- continuar una tarea
+- cambiar el flujo de trabajo
+
+Nunca ocultes el control humano.
+
+Debe existir un sistema de aprobación para acciones importantes.
+
+==================================================
+6. MODOS DE OPERACIÓN
+==================================================
+
+Implementar:
+
+MODO MODERADO
+
+Las IAs pueden analizar y conversar.
+
+Las operaciones sensibles requieren aprobación humana.
+
+MODO SUPERVISADO
+
+Las IAs pueden pasar tareas entre sí automáticamente.
+
+El usuario observa en tiempo real.
+
+MODO AUTÓNOMO
+
+Las IAs pueden ejecutar una cadena completa respetando los permisos definidos.
+
+Debe existir un botón visible para DETENER TODO.
+
+==================================================
+7. SISTEMA DE TAREAS
+==================================================
+
+Crear un task engine.
+
+Cada tarea debe tener al menos:
+
+task_id
+project_id
+title
+description
+priority
+status
+created_by
+assigned_agent
+created_at
+updated_at
+current_branch
+current_commit
+context_summary
+parent_task_id
+requires_human_approval
+next_agent
+created_files
+modified_files
+related_commits
+
+Estados recomendados:
+
+OPEN
+PLANNING
+IN_PROGRESS
+WAITING_AGENT
+WAITING_REVIEW
+WAITING_USER
+APPROVED
+REJECTED
+BLOCKED
+FAILED
+COMPLETED
+CANCELLED
+
+==================================================
+8. MENSAJERÍA ENTRE AGENTES
+==================================================
+
+Crear un sistema de mensajes persistentes.
+
+Cada mensaje debe poder contener:
+
+message_id
+task_id
+conversation_id
+from_agent
+to_agent
+message_type
+content
+created_at
+reply_to
+priority
+requires_action
+requires_approval
+git_branch
+git_commit
+files
+attachments
+status
+
+Tipos de mensaje:
+
+TASK
+REQUEST
+REVIEW
+QUESTION
+ANSWER
+WARNING
+ERROR
+PROPOSAL
+APPROVAL_REQUEST
+STATUS
+RESULT
+HANDOFF
+
+Una IA puede decir:
+
+"Quiero que GPT revise mi implementación."
+
+Pero NO debe llamar directamente a GPT.
+
+Debe crear un HANDOFF o REVIEW_REQUEST.
+
+El orquestador decide la entrega.
+
+==================================================
+9. CONVERSACIÓN AGENTE ↔ AGENTE
+==================================================
+
+Crear una sala donde se pueda ver la conversación completa.
+
+Ejemplo:
+
+CLAUDE:
+Terminé la implementación.
+
+GPT:
+Voy a revisar los archivos modificados.
+
+GPT:
+Encontré dos problemas.
+
+CLAUDE:
+Entendido. Corregiré el segundo.
+
+GPT:
+Vuelve a ejecutar las pruebas.
+
+CLAUDE:
+Pruebas realizadas.
+
+GPT:
+Auditoría aprobada.
+
+Todo debe aparecer en tiempo real.
+
+El usuario puede escribir en medio de la conversación.
+
+==================================================
+10. PÁGINA PRINCIPAL
+==================================================
+
+La página principal debe ser un verdadero COMMAND CENTER.
+
+Debe mostrar:
+
+- proyecto actual
+- branch
+- commit
+- estado global
+- tareas activas
+- agentes conectados
+- agentes ocupados
+- agentes esperando
+- agentes desconectados
+- actividad reciente
+- mensajes
+- aprobaciones pendientes
+- GitHub status
+
+Debe existir un área de conversación principal.
+
+==================================================
+11. OFICINA PIXEL ART
+==================================================
+
+Esta es una parte MUY IMPORTANTE.
+
+Crear un apartado llamado:
+
+AI OFFICE
+
+Quiero una representación visual de una oficina de desarrollo vista DESDE ARRIBA, estilo pixel art.
+
+No quiero una imagen estática.
+
+Debe ser una escena interactiva de la propia aplicación.
+
+Representar:
+
+- oficinas
+- escritorios
+- computadores
+- monitores
+- sillas
+- papeles
+- tazas
+- archivadores
+- estanterías
+- plantas
+- pizarras
+- lámparas
+- cables
+- pequeños objetos de escritorio
+- decoración tecnológica
+- detalles de desarrollo de videojuegos
+- pequeños elementos relacionados con código
+- detalles de cada IA
+
+Cada agente tendrá su propio escritorio.
+
+Por ejemplo:
+
+CLAUDE:
+trabajando frente al computador.
+
+GPT/CODEX:
+revisando código con varias ventanas.
+
+GEMINI:
+investigando/documentándose.
+
+Agentes inactivos:
+animación de espera.
+
+Agentes trabajando:
+animación de escritura, pantallas activas, pequeños movimientos.
+
+Agentes pensando:
+animaciones sutiles.
+
+Agentes esperando:
+estado idle.
+
+Agentes desconectados:
+estado claramente visible pero sin destruir la estética.
+
+La cámara debe permitir:
+
+- zoom
+- desplazamiento
+- ver toda la oficina
+- acercarse a cada puesto
+- seleccionar un agente
+
+Al seleccionar un agente, abrir su panel:
+
+nombre
+modelo
+rol
+estado
+tarea
+CPU/actividad lógica si está disponible
+último evento
+último mensaje
+archivos actuales
+branch
+commit
+herramientas activas
+
+La oficina debe sentirse como una representación visual del trabajo real.
+
+NO usar una simple cuadrícula de tarjetas disfrazada de oficina.
+
+==================================================
+12. ESTILO VISUAL
+==================================================
+
+Inspiración:
+
+pixel art moderno
+herramientas de desarrollo
+oficina de videojuego
+desktop simulation
+top-down office
+retro futurista
+detalles pequeños
+animaciones sutiles
+
+No utilizar imágenes de stock.
+
+Evitar depender de servicios externos de imágenes.
+
+Priorizar:
+
+CSS
+SVG
+Canvas
+sprites locales
+formas procedurales
+assets propios
+
+La interfaz general debe ser moderna y profesional.
+
+La oficina puede ser más artística.
+
+==================================================
+13. FIRECRAWL
+==================================================
+
+Utiliza Firecrawl MCP cuando la tarea necesite:
+
+- scraping
+- crawling
+- búsqueda web
+- extracción estructurada
+- análisis de páginas
+- investigación web
+- documentación externa
+
+No hagas scraping manual si Firecrawl MCP está disponible y es la herramienta apropiada.
+
+Firecrawl tiene un MCP oficial.
+
+Si está disponible en el entorno, úsalo.
+
+Nunca expongas API keys en código fuente.
+
+Nunca escribas credenciales directamente en prompts almacenados.
+
+Usa variables de entorno o almacenamiento seguro.
+
+==================================================
+14. PLAYWRIGHT
+==================================================
+
+Utiliza Playwright MCP para:
+
+- abrir la aplicación
+- navegar
+- interactuar
+- realizar pruebas visuales
+- verificar formularios
+- comprobar navegación
+- validar responsive
+- tomar capturas cuando sean necesarias
+- realizar pruebas end-to-end
+
+Playwright debe utilizarse especialmente para verificar el resultado real de la aplicación, no solamente para asumir que el código funciona.
+
+Si el servidor MCP de Playwright está disponible, utilízalo.
+
+==================================================
+15. PERPLEXITY MCP
+==================================================
+
+Dejar preparado el sistema para Perplexity MCP como agente/herramienta de investigación.
+
+Utilizarlo cuando sea útil para:
+
+- investigación reciente
+- documentación
+- comparación tecnológica
+- búsqueda especializada
+- análisis web actualizado
+
+No asumir que Perplexity siempre debe ejecutarse.
+
+Debe ser opcional y controlable.
+
+Las credenciales deben estar fuera del repositorio.
+
+==================================================
+16. GITHUB
+==================================================
+
+GitHub es la fuente de verdad del código.
+
+La aplicación debe conocer:
+
+repository
+branch
+commit
+pull requests
+issues
+files
+changes
+
+Nunca considerar la base de datos como sustituta de Git.
+
+GitHub guarda:
+
+código
+assets
+documentación
+historial
+commits
+branches
+PRs
+
+La aplicación guarda:
+
+estado operacional
+tareas
+mensajes
+agentes
+eventos
+permisos
+configuración
+resúmenes
+contexto
+
+==================================================
+17. SUPABASE
+==================================================
+
+Usar Supabase/PostgreSQL para el estado operativo.
+
+No almacenar archivos pesados en PostgreSQL.
+
+Crear tablas iniciales para:
+
+users
+projects
+agents
+agent_capabilities
+agent_sessions
+tasks
+task_steps
+messages
+conversations
+approvals
+permissions
+events
+agent_runs
+project_context
+decisions
+reviews
+git_refs
+
+Utilizar Realtime para estados y mensajes en vivo cuando corresponda.
+
+Diseñar índices desde el principio.
+
+Mantener el consumo bajo.
+
+No guardar basura de streaming como información permanente.
+
+==================================================
+18. AGENT BRIDGE LOCAL
+==================================================
+
+IMPORTANTE.
+
+Como Claude Code y Codex pueden estar trabajando localmente en la máquina, crear una arquitectura de AGENT BRIDGE.
+
+Cada agente local tendrá un pequeño worker que:
+
+- se autentica
+- anuncia su presencia
+- recibe tareas
+- envía resultados
+- envía estado
+- mantiene heartbeat
+- comunica errores
+- puede acceder a su workspace local
+- nunca expone directamente sus secretos
+
+Ejemplo:
+
+WEB
+↓
+ORCHESTRATOR
+↓
+AGENT BRIDGE
+↓
+CLAUDE CODE LOCAL
+
+y:
+
+WEB
+↓
+ORCHESTRATOR
+↓
+AGENT BRIDGE
+↓
+CODEX LOCAL
+
+El backend nunca debe intentar manipular directamente el disco local del usuario.
+
+==================================================
+19. FUTURAS IAs
+==================================================
+
+Diseñar un sistema de adaptadores.
+
+No hacer:
+
+if agent == claude
+if agent == gpt
+if agent == gemini
+
+en todo el código.
+
+Crear una interfaz abstracta:
+
+AgentProvider
+AgentSession
+AgentMessage
+AgentTask
+AgentCapability
+
+Ejemplo conceptual:
+
+ClaudeProvider
+OpenAIProvider
+GeminiProvider
+PerplexityProvider
+OllamaProvider
+GenericMCPProvider
+GenericHTTPProvider
+
+Así podemos añadir nuevas IAs sin modificar todo.
+
+==================================================
+20. CONTEXTO COMPARTIDO
+==================================================
+
+Las IAs deben compartir contexto de forma controlada.
+
+No mandar siempre todo.
+
+Crear un Context Manager capaz de construir:
+
+- contexto global del proyecto
+- contexto de tarea
+- contexto de conversación
+- contexto del agente
+- contexto Git
+- contexto de archivos
+- contexto de decisiones anteriores
+- resultados recientes
+
+Utilizar contexto resumido cuando el historial sea grande.
+
+La regla es:
+
+"enviar el mínimo contexto necesario para realizar correctamente la tarea".
+
+==================================================
+21. MEMORIA
+==================================================
+
+Crear memoria por capas:
+
+MEMORIA PERMANENTE:
+decisiones
+arquitectura
+reglas
+documentación
+resultados importantes
+
+MEMORIA DE TAREA:
+objetivo
+archivos
+cambios
+mensajes
+revisiones
+
+MEMORIA DE SESIÓN:
+estado temporal
+streaming
+presencia
+actividad
+
+No mezclar estas capas.
+
+==================================================
+22. SEGURIDAD
+==================================================
+
+Implementar desde el principio:
+
+- autenticación
+- autorización
+- variables de entorno
+- separación de secretos
+- permisos por agente
+- aprobación para acciones sensibles
+- protección del webhook
+- rate limiting básico
+- validación de entradas
+- logs
+- evitar ejecución arbitraria desde navegador
+- nunca enviar API keys al frontend
+- nunca almacenar secretos en Git
+- protección contra prompt injection proveniente de documentos externos
+
+La página web nunca debe contener:
+
+OPENAI_API_KEY
+ANTHROPIC_API_KEY
+GEMINI_API_KEY
+PERPLEXITY_API_KEY
+FIRECRAWL_API_KEY
+GITHUB_TOKEN
+
+en código cliente.
+
+==================================================
+23. UX
+==================================================
+
+Debe poder entenderse visualmente sin leer documentación.
+
+Estados claros:
+
+ONLINE
+WORKING
+THINKING
+WAITING
+REVIEWING
+ERROR
+OFFLINE
+BLOCKED
+
+Usar indicadores y animaciones sutiles.
+
+No llenar todo de colores brillantes.
+
+No crear una interfaz genérica de SaaS.
+
+Debe sentirse como:
+
+"el centro de mando de un pequeño equipo de desarrolladores IA".
+
+==================================================
+24. RESPONSIVE
+==================================================
+
+Debe funcionar en:
+
+desktop
+laptop
+tablet
+mobile
+
+La oficina visual puede adaptar la cámara en móvil.
+
+==================================================
+25. DESARROLLO
+==================================================
+
+Antes de implementar:
+
+1. inspecciona el repositorio.
+2. identifica la estructura actual.
+3. identifica tecnologías existentes.
+4. identifica lo que puede reutilizarse.
+5. identifica incompatibilidades.
+6. define una arquitectura documentada.
+
+Después:
+
+implementa.
+
+No te detengas solamente entregando una propuesta.
+
+Quiero código funcional.
+
+==================================================
+26. CALIDAD
+==================================================
+
+Después de implementar:
+
+- ejecuta lint
+- ejecuta typecheck
+- ejecuta tests
+- ejecuta build
+- verifica rutas
+- verifica estados
+- revisa seguridad
+- revisa responsive
+- usa Playwright para probar la interfaz real
+- revisa consola del navegador
+- corrige los errores encontrados
+
+Nunca declares "terminado" si el build falla.
+
+==================================================
+27. DOCUMENTACIÓN
+==================================================
+
+Crear o actualizar:
+
+README
+ARCHITECTURE
+SETUP
+ENVIRONMENT
+AGENTS
+CONTRIBUTING
+
+Documentar:
+
+cómo ejecutar
+cómo desplegar
+cómo configurar Supabase
+cómo configurar GitHub
+cómo conectar agentes
+cómo conectar MCP
+cómo agregar una IA nueva
+cómo configurar workers locales
+
+==================================================
+28. PRIORIDADES DE IMPLEMENTACIÓN
+==================================================
+
+FASE 1
+
+Crear:
+
+web
+dashboard
+project
+agents
+tasks
+messages
+database
+auth
+realtime
+
+FASE 2
+
+Crear:
+
+agent bridge
+Claude local
+Codex local
+estado real de agentes
+
+FASE 3
+
+Crear:
+
+oficina pixel art
+animaciones
+selección de agentes
+vista detallada
+
+FASE 4
+
+Crear:
+
+Gemini
+Perplexity
+Firecrawl
+Playwright
+MCP adapters
+
+FASE 5
+
+Crear:
+
+automatización
+agent-to-agent handoffs
