@@ -1,0 +1,20 @@
+{
+  "name": "ai-command-center",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-agent command center: Claude, GPT/Codex, Gemini and more, coordinated by an orchestrator with a human moderator in charge.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:bridge": "npm --prefix bridge test",
+    "test:e2e": "npm run bridge:build && playwright test",
+    "bridge:build": "npm --prefix bridge run build",
+    "setup:env": "node scripts/setup-env.mjs",
+    "db:migrate": "node scripts/migrate.mjs"
+  }
+}

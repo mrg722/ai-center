@@ -1,0 +1,23 @@
+{
+  "name": "@acc/bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Command Center \u2014 local Agent Bridge worker + MCP server (zero runtime dependencies)",
+  "type": "module",
+  "bin": {
+    "acc-bridge": "dist/bridge/src/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/bridge/src/cli.js run",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist/bridge/test/*.test.js\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.0"
+  }
+}

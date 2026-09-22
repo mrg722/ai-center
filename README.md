@@ -1,105 +1,58 @@
 # AI Command Center
 
-Centro de mando multiagente para coordinar Claude, GPT/Codex, Gemini y futuros agentes cloud, locales o basados en sesiones web desde una sola interfaz.
+Centro de mando multiagente. Claude, GPT/Codex, Gemini y cualquier otra IA
+trabajan sobre el mismo proyecto, **se comunican solo a través de un
+orquestador** y tú, como moderador, lo ves y controlas todo desde una página.
 
-## Objetivo
-
-Construir una plataforma real donde el usuario actúe como moderador y pueda crear tareas, observar conversaciones agente↔agente, intervenir, aprobar acciones y seguir cambios de GitHub.
-
-El sistema debe soportar tres formas de ejecutar un agente:
-
-1. **API/Cloud** — la aplicación llama a una API oficial.
-2. **Local/CLI** — el agente corre en la máquina del usuario, por ejemplo Claude Code, Codex o Antigravity CLI.
-3. **Sesión Web** — un puente local controla un navegador ya autenticado mediante automatización del navegador cuando sea técnicamente y contractualmente apropiado.
-
-Las sesiones web no deben considerarse el mecanismo central de integración: son un modo opcional y más frágil que los SDK/APIs oficiales.
-
-## Arquitectura
-
-```text
-WEB (Next.js)
-    |
-    v
-ORQUESTADOR
-    |
-    +--> Supabase/PostgreSQL + Realtime
-    |
-    +--> GitHub
-    |
-    +--> Agent Bridge local
-    |       +--> Claude Code
-    |       +--> Codex
-    |       +--> Antigravity CLI
-    |       +--> IAs locales
-    |       +--> Sesiones Web (opcional)
-    |
-    +--> Proveedores/API
-            +--> OpenAI
-            +--> Anthropic
-            +--> Gemini
-            +--> Perplexity
-            +--> otros
-    |
-    +--> MCP
-            +--> Playwright
-            +--> Firecrawl
-            +--> Perplexity
-            +--> futuros
+```
+TÚ ──► tarea ──► ORQUESTADOR ──► Claude (bridge local)  implementa, pide revisión
+                    │   ▲        GPT/Codex (bridge local) audita, corrige, push/PR
+                    │   └──────  Gemini (API)            segunda opinión
+                    ▼
+        Command Center · AI Office · aprobaciones · STOP ALL
 ```
 
-## Reparto inicial
+## Qué incluye
 
-| Agente | Rol | Leer | Escribir | Commit | Push | Merge |
-|---|---|---:|---:|---:|---:|---:|
-| Claude | Constructor principal | ✅ | ✅ | ✅ | ❌ | ❌ |
-| GPT/Codex | Auditor + Integrador | ✅ | ✅ | ✅ | ✅* | ❌ |
-| Gemini | Investigación + Segunda opinión | ✅ | ❌ | ❌ | ❌ | ❌ |
+- **Command Center**: agentes con estado real, tareas, sala de conversación en tiempo real, aprobaciones, actividad, estado de GitHub, modo de operación y **DETENER TODO**.
+- **AI Office**: oficina pixel art top-down (canvas procedural, sin imágenes) con zoom/pan/pinch, selección de agente y panel de detalle. Representa el `AgentState` real: nunca inventa actividad.
+- **Orquestador**: motor de tareas, router de mensajes con cola de entregas, **Policy Engine** (permisos, modos, aprobaciones, límite de saltos IA→IA, presupuesto de APIs de pago), Context Manager con presupuesto y memoria por capas.
+- **Agent Bridge** (`bridge/`, sin dependencias): worker local para Claude Code, Codex CLI o cualquier CLI + servidor **MCP `acc`** para que los agentes hablen con el orquestador. Git lo ejecuta el bridge tras la decisión del orquestador (sin `--force`, ramas protegidas).
+- **Runtimes** intercambiables: Claude Code, Codex, Anthropic API, OpenAI API, Gemini, Perplexity, OpenRouter, DeepSeek, Mistral, Qwen, Ollama, LM Studio, OpenAI-compatible, HTTP genérico, MCP genérico — y un **simulador** para el modo DEMO.
+- **Modos**: Demo (simulado) · Moderado · Supervisado · Autónomo.
+- Seguridad: secretos solo en el servidor, tokens de agente hasheados, CSRF, CSP, rate limiting, validación estricta, webhook firmado, defensa contra prompt injection.
 
-`*` El push debe seguir la política de aprobación configurada por el usuario.
+## Arranque rápido (local, sin instalar base de datos)
 
-## Fuentes de verdad
+```bash
+npm install
+npm run setup:env          # crea .env.local con secretos aleatorios y te muestra el SETUP_TOKEN
+npm run dev                # http://localhost:3000 → /setup
+npm run bridge:build       # compila el Agent Bridge
+```
 
-- **GitHub:** código, assets, documentación, branches, commits y PRs.
-- **Supabase:** tareas, mensajes, sesiones, permisos, eventos, contexto operativo y presencia.
-- **Agent Bridge:** ejecución local y acceso controlado al workspace.
-- **Proveedores externos:** respuestas de modelos y herramientas, nunca la fuente de verdad del proyecto.
-
-## Modos de interacción
-
-### Panel unificado
-
-La web muestra a todos los agentes, su estado, conversación, tareas y actividad.
-
-### API/Cloud
-
-Ideal cuando se requiere ejecución completamente remota y programática. Requiere las credenciales y facturación del proveedor correspondiente.
-
-### Local/CLI
-
-Ideal para aprovechar entornos locales y suscripciones compatibles. Claude Code, Codex y Antigravity CLI pueden ejecutarse en el ordenador y reportar eventos al Command Center.
-
-### Sesión Web
-
-Permite, cuando sea apropiado, abrir/controlar una sesión autenticada de ChatGPT, Claude o Gemini mediante el navegador local. No se deben almacenar contraseñas ni tokens de sesión en el servidor. La sesión permanece en el entorno del usuario y el puente solo transmite tareas/eventos.
+1. En `/setup` crea tu usuario moderador y el proyecto (usa el SETUP_TOKEN).
+2. Cambia a modo **Demo** para ver el flujo completo con agentes simulados.
+3. Para agentes reales: **Agentes → Emitir token del bridge** y arranca el bridge en tu repo (ver [docs/AGENTS.md](docs/AGENTS.md)).
 
 ## Documentación
 
-- `docs/ARCHITECTURE.md`
-- `docs/ORCHESTRATOR.md`
-- `docs/AGENT_PROTOCOL.md`
-- `docs/AGENT_BRIDGE.md`
-- `docs/WEB_SESSIONS.md`
-- `docs/DATABASE.md`
-- `docs/OFFICE.md`
-- `docs/MCP.md`
-- `docs/SECURITY.md`
-- `docs/DEPLOYMENT.md`
-- `docs/NEXT_STEPS.md`
-- `docs/PROMPT_CLAUDE.md`
-- `docs/PROMPT_CODEX.md`
+| Documento | Contenido |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | arquitectura, ADRs, flujo, modos, memoria, seguridad |
+| [docs/SETUP.md](docs/SETUP.md) | ejecutar, desplegar en Vercel, Supabase, GitHub |
+| [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) | todas las variables de entorno |
+| [docs/AGENTS.md](docs/AGENTS.md) | conectar agentes y workers locales, MCP, añadir una IA nueva |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | convenciones, pruebas, flujo git |
 
-## Principio
+## Scripts
 
-La aplicación no debe fingir que un agente está conectado. Si un agente está offline, se muestra offline. Si una acción requiere aprobación, se muestra. Si un proveedor no está configurado, aparece como no disponible.
-
-No acoplar el núcleo a Claude, OpenAI, Gemini ni a ningún proveedor único.
+| Script | Qué hace |
+|---|---|
+| `npm run dev` / `build` / `start` | Next.js |
+| `npm run lint` · `typecheck` | calidad |
+| `npm test` | unitarias + integración (Postgres embebido real) |
+| `npm run test:bridge` | pruebas del Agent Bridge (git real en repos temporales, MCP stdio) |
+| `npm run test:e2e` | Playwright contra el servidor real + un bridge real |
+| `npm run db:migrate` | aplica migraciones a `DATABASE_URL` |
+| `npm run bridge:build` | compila `bridge/` |
