@@ -23,21 +23,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // SQL migrations are read at runtime by the auto-migrator
   outputFileTracingIncludes: { '/**': ['./supabase/migrations/*.sql'] },
-  serverExternalPackages: ['@electric-sql/pglite', 'pg', 'pg-connection-string', 'pg-native'],
-  // Instrumentation is bundled by Next's server webpack path. Force the Node-only
-  // database drivers to remain runtime externals there as well; otherwise webpack
-  // walks pg's optional/Node built-in dependencies (fs/path) during dev.
-  webpack(config, { isServer }) {
-    if (isServer) {
-      config.externals = [
-        ...(config.externals ?? []),
-        { pg: 'commonjs pg' },
-        { 'pg-native': 'commonjs pg-native' },
-        { '@electric-sql/pglite': 'commonjs @electric-sql/pglite' },
-      ];
-    }
-    return config;
-  },
+  serverExternalPackages: ['@electric-sql/pglite', 'pg'],
   async headers() {
     return [
       {
