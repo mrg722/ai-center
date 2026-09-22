@@ -20,6 +20,7 @@ export const POST = userRoute(
     const body = await readJson(req, agentUpsertSchema);
     const project = await requireProject(db);
     const config = body.config ?? {};
+    const role = body.role ?? 'GENERIC';
     const provider = getRuntime(body.runtime);
     if (!provider || provider.transport === 'in-process') throw new HttpError(400, `unknown runtime ${body.runtime}`);
     if (config.api_key_env && !isApiKeyEnvAllowed(config.api_key_env)) {
@@ -37,7 +38,7 @@ export const POST = userRoute(
         provider.id,
         provider.transport,
         body.model,
-        body.role,
+        role,
         body.role_label,
         body.description,
         body.color,
@@ -46,7 +47,7 @@ export const POST = userRoute(
         await nextSortOrder(db, project.id),
       ],
     );
-    await seedPermissions(db, r.rows[0].id, body.role, user.id);
+    await seedPermissions(db, r.rows[0].id, role, user.id);
     for (const c of provider.capabilities) {
       await db.query('insert into agent_capabilities (agent_id, capability) values ($1,$2) on conflict do nothing', [r.rows[0].id, c]);
     }
