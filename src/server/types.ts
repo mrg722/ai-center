@@ -66,6 +66,7 @@ export interface SessionRow {
   last_heartbeat_at: string;
   ended_at: string | null;
   status: Exclude<AgentStatus, 'OFFLINE'>;
+  provider_session_id: string | null;
   activity: string;
   current_task_id: string | null;
   workspace: WorkspaceState;
