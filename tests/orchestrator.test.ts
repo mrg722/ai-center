@@ -224,7 +224,7 @@ describe('orchestrator', () => {
     await drainHostedQueue();
     const err = await db.query<{ content: string }>(`select content from messages where task_id=$1 and message_type='ERROR'`, [t.id]);
     expect(err.rows[0].content).toMatch(/Daily token budget reached/);
-    const audit = await db.query(`select payload from events where type='policy.decision' and agent_id=$1`, [gemini.id]);
+    const audit = await db.query(`select payload from events where type='policy.decision' and payload->>'action'='paid_api_call' and payload->>'decision'='deny'`);
     expect(audit.rowCount).toBeGreaterThan(0);
     delete process.env.GEMINI_API_KEY;
   });
@@ -256,7 +256,8 @@ describe('orchestrator', () => {
     // no COMMAND ever reaches a bridge in DEMO
     expect((await db.query(`select 1 from messages where message_type='COMMAND' and task_id=$1`, [t.id])).rowCount).toBe(0);
     const approval = (await db.query(`select * from approvals where task_id=$1 and status='PENDING' and action='push'`, [t.id])).rows[0] as never;
-    await decideApproval(db, project, approval, user, true, '');
+    const decision = await decideApproval(db, project, approval, user, true, '');
+    expect((decision.result as { outcome?: string } | undefined)?.outcome).toBe('done');
     const sim = await db.query<{ content: string }>(`select content from messages where task_id=$1 and content like '[SIMULADO] git push%'`, [t.id]);
     expect(sim.rowCount).toBe(1);
   });
