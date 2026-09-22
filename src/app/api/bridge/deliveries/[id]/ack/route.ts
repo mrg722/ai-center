@@ -17,6 +17,7 @@ export const POST = agentRoute<{ id: string }>(async ({ req, db, agent, params }
     tokensOut: body.run?.tokens_out,
     outputChars: body.run?.output_chars,
     summary: body.run?.summary,
+    providerSessionId: body.provider_session_id,
   });
   return { ok: true };
 });
