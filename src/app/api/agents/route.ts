@@ -22,10 +22,10 @@ export const POST = userRoute(
     const config = body.config ?? {};
     const provider = getRuntime(body.runtime);
     if (!provider || provider.transport === 'in-process') throw new HttpError(400, `unknown runtime ${body.runtime}`);
-    if (config.api_key_env && !isApiKeyEnvAllowed(body.config.api_key_env)) {
+    if (config.api_key_env && !isApiKeyEnvAllowed(config.api_key_env)) {
       throw new HttpError(400, 'api_key_env must be the NAME of an env var ending in _API_KEY or _TOKEN (never the key itself)');
     }
-    if (config.base_url && !provider.baseUrlEditable) delete body.config.base_url;
+    if (config.base_url && !provider.baseUrlEditable) delete config.base_url;
     if (await getAgentBySlug(db, project.id, body.slug)) throw new HttpError(409, 'slug already in use');
     const r = await db.query<{ id: string }>(
       `insert into agents (project_id, slug, name, runtime, transport, model, role, role_label, description, color, config, enabled, sort_order)
