@@ -256,19 +256,14 @@ export function renderContext(i: RenderInput): ContextPackage {
 /** Trims lowest-priority sections first until the package fits the budget. */
 export function fitBudget(sections: Section[], budget: number): ContextPackage {
   const order = [...sections].sort((a, b) => b.priority - a.priority);
-  const mandatoryMinimum = order.reduce((n, s) => n + (s.minChars > 0 ? s.minChars : 0), 0);
-  if (budget < mandatoryMinimum) {
-    for (const s of order) {
-      if (s.minChars === 0) s.body = '';
-    }
-  }
-  let total = order.reduce((n, s) => n + (s.body ? s.body.length + 2 : 0), 0);
+  let total = order.reduce((n, s) => n + s.body.length + 2, 0);
   for (let idx = order.length - 1; idx >= 0 && total > budget; idx--) {
     const s = order[idx];
     const over = total - budget;
     const target = Math.max(s.minChars, s.body.length - over);
-    if (target < s.body.length) {
-      const newBody = target <= 0 ? '' : s.keepEnd ? clipStart(s.body, target) : clip(s.body, target);
+    const optionalTooSmall = s.minChars === 0 && target < 512;
+    if (optionalTooSmall || target < s.body.length) {
+      const newBody = optionalTooSmall ? '' : target <= 0 ? '' : s.keepEnd ? clipStart(s.body, target) : clip(s.body, target);
       total -= s.body.length - newBody.length;
       s.body = newBody;
     }
@@ -276,7 +271,6 @@ export function fitBudget(sections: Section[], budget: number): ContextPackage {
   // keep a stable, readable order
   const display = ['identity', 'protocol', 'rules', 'task', 'incoming', 'reviews', 'git', 'conversation', 'team', 'memory'];
   const kept = sections.filter((s) => s.body).sort((a, b) => display.indexOf(a.name) - display.indexOf(b.name));
-  // the message to handle goes last so it is freshest in the model's attention
   const incomingIdx = kept.findIndex((s) => s.name === 'incoming');
   if (incomingIdx >= 0) kept.push(kept.splice(incomingIdx, 1)[0]);
   const prompt = kept.map((s) => s.body).join('\n\n');
