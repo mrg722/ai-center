@@ -45,7 +45,7 @@ export const POST = userRoute<{ id: string }>(
           action: body.action,
           allowed: body.allowed,
           temporaryMinutes: body.temporary_minutes,
-          reason: body.reason,
+          reason: body.reason ?? '',
         });
         return { ok: true };
       case 'revoke_temporary':
