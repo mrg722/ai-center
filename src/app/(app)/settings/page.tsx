@@ -5,7 +5,7 @@ import { useLive } from '@/lib/client/live';
 import { api } from '@/lib/client/api';
 import type { RuntimeInfo } from '@/lib/client/types';
 import type { ToolServerConfig } from '@/shared/protocol';
-import { Button, cx, Empty, Field, inputCls, Panel } from '@/components/ui';
+import { Button, cx, Empty, Field, inputCls, Panel, StatusDot } from '@/components/ui';
 import { Markdown } from '@/components/Markdown';
 
 interface Doc {
