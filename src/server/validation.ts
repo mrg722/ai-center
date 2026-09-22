@@ -22,7 +22,7 @@ const sha = z.string().regex(/^[0-9a-f]{7,64}$/i).optional();
 const branch = z
   .string()
   .max(200)
-  .regex(/^(?!-)[A-Za-z0-9._\/-]+$/, 'invalid branch name')
+  .regex(/^(?!-)[A-Za-z0-9._/-]+$/, 'invalid branch name')
   .optional();
 
 export const agentActionSchema = z.discriminatedUnion('action', [
