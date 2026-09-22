@@ -12,9 +12,8 @@ set client_min_messages = warning;
 -- PGlite does not ship pgcrypto. Keep UUID generation extension-free so local tests and
 -- managed PostgreSQL use the same migration. md5/random/clock_timestamp are core SQL functions.
 create or replace function acc_gen_random_uuid() returns uuid
-language sql volatile as $
-  select md5(random()::text || clock_timestamp()::text)::uuid
-$;
+as 'select md5(random()::text || clock_timestamp()::text)::uuid'
+language sql volatile;
 
 -- ─────────────────────────────────────────────────────────────── helpers
 create or replace function acc_touch_updated_at() returns trigger
