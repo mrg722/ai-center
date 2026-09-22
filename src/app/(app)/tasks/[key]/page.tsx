@@ -166,7 +166,8 @@ export default function TaskPage({ params }: { params: Promise<{ key: string }> 
                       {s.title}
                     </span>
                   </li>
-                })}
+                );
+              })}
             </ol>
           </Panel>
           <Panel title="Ejecuciones">
