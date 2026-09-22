@@ -15,7 +15,7 @@ git push -u origin main
 
 1. Crear un proyecto Free.
 2. Ejecutar `supabase/schema.sql` en el editor SQL.
-3. Configurar Auth y Realtime para las tablas y canales requeridos.
+3. Configurar las variables de PostgreSQL/Auth según `docs/ENVIRONMENT.md`. El navegador recibe eventos por SSE; no se requiere Supabase Realtime.
 
 ## Vercel
 
