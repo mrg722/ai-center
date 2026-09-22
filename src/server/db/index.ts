@@ -1,4 +1,6 @@
 import 'server-only';
+import { mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { env } from '../env';
 
 /**
@@ -94,6 +96,7 @@ async function create(): Promise<Db> {
   } else {
     const { PGlite } = await import('@electric-sql/pglite');
     const dir = env.pgliteDir;
+    if (dir !== 'memory') await mkdir(dirname(dir), { recursive: true });
     const pg = dir === 'memory' ? new PGlite() : new PGlite(dir);
     await pg.waitReady;
     db = new PgliteDb(pg);
