@@ -35,7 +35,7 @@ export const POST = publicRoute(
       project_name: body.project_name,
       project_key: body.project_key,
       repo: body.repo || undefined,
-      default_branch: body.default_branch,
+      default_branch: body.default_branch ?? 'main',
     });
     await createSession({ id: userId, session_version: 1 });
     return { ok: true, project_id: project.id };
