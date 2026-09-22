@@ -196,6 +196,7 @@ export class BridgeWorker {
         workspace: this.cfg.workspace,
         mcpConfigPath,
         mcpServer,
+        providerSessionId: this.hello.provider_session_id ?? null,
         signal: this.abort.signal,
         maxRunSeconds: this.cfg.maxRunSeconds,
         extraArgs: this.cfg.runnerArgs,
@@ -209,6 +210,7 @@ export class BridgeWorker {
       await this.client.ack(item.delivery_id, {
         status: 'DONE',
         result_text: out.text.slice(0, 60_000),
+        provider_session_id: out.providerSessionId,
         workspace: this.workspace,
         run: {
           started_at: started.toISOString(),
