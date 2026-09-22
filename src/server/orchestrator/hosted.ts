@@ -171,6 +171,14 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
         dailyTokenBudget: project.settings.daily_token_budget,
       });
       if (gate.kind !== 'allow') {
+        await emit(db, {
+          project_id: project.id,
+          type: 'policy.decision',
+          actor: agentActor(agent),
+          agent_id: agent.id,
+          task_id: taskId ?? null,
+          payload: { action: 'paid_api_call', decision: gate.kind, reason: gate.reason, tokens_today: used.rows[0].n, daily_token_budget: project.settings.daily_token_budget ?? null },
+        });
         await completeDelivery(db, agent, delivery.id, { status: 'FAILED', error: `Policy: ${gate.kind === 'deny' ? gate.reason : 'requires approval'}` });
         return;
       }
