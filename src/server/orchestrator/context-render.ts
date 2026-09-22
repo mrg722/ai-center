@@ -256,7 +256,13 @@ export function renderContext(i: RenderInput): ContextPackage {
 /** Trims lowest-priority sections first until the package fits the budget. */
 export function fitBudget(sections: Section[], budget: number): ContextPackage {
   const order = [...sections].sort((a, b) => b.priority - a.priority);
-  let total = order.reduce((n, s) => n + s.body.length + 2, 0);
+  const mandatoryMinimum = order.reduce((n, s) => n + (s.minChars > 0 ? s.minChars : 0), 0);
+  if (budget < mandatoryMinimum) {
+    for (const s of order) {
+      if (s.minChars === 0) s.body = '';
+    }
+  }
+  let total = order.reduce((n, s) => n + (s.body ? s.body.length + 2 : 0), 0);
   for (let idx = order.length - 1; idx >= 0 && total > budget; idx--) {
     const s = order[idx];
     const over = total - budget;
