@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:bridge": "npm --prefix bridge test",
-    "test:e2e": "npm run bridge:build && playwright test",
+    "test:e2e": "npm run build && npm run bridge:build && playwright test",
     "bridge:build": "npm --prefix bridge run build",
     "setup:env": "node scripts/setup-env.mjs",
     "db:migrate": "node scripts/migrate.mjs"
