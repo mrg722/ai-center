@@ -632,50 +632,110 @@ function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dy
   const cy = s.y + 76;
   const chairC = shade(a.color.length === 7 ? a.color : '#6b7280', -60);
   const off = a.status === 'OFFLINE';
-
-  if (off) {
-    // empty chair pushed back, rotated a little
-    rect(ctx, cx + 4, cy - 2, 18, 14, chairC);
-    rect(ctx, cx + 4, cy + 10, 18, 5, shade(chairC, -20));
-    rect(ctx, cx + 12, cy + 15, 2, 5, '#1b1f27');
-    return;
-  }
-
-  const active = ['WORKING', 'REVIEWING'].includes(a.status);
-  const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.6 + seed) > 0.6 ? 1 : 0;
-  const bob = active && !d.reducedMotion ? (Math.floor(t * 6) % 2) : 0;
   const hair = HAIR[seed % HAIR.length];
   const skin = SKIN[(seed >> 3) % SKIN.length];
   const shirt = a.color;
-  const y = cy + breathe;
 
-  // chair seat + back (behind the body from our view: we see the backrest)
-  rect(ctx, cx - 10, cy - 4, 20, 14, chairC);
-  // arms reaching to keyboard (typing alternates)
-  const lArm = active && !d.reducedMotion && Math.floor(t * 8) % 2 === 0 ? -1 : 0;
-  const rArm = active && !d.reducedMotion && Math.floor(t * 8) % 2 === 1 ? -1 : 0;
-  rect(ctx, cx - 10, y - 16 + lArm, 3, 9, shade(shirt, -20));
-  rect(ctx, cx + 7, y - 16 + rArm, 3, 9, shade(shirt, -20));
-  rect(ctx, cx - 10, y - 18 + lArm, 3, 2, skin);
-  rect(ctx, cx + 7, y - 18 + rArm, 3, 2, skin);
-  // torso
-  rect(ctx, cx - 8, y - 10, 16, 12, shirt);
-  rect(ctx, cx - 7, y - 11, 14, 1, shirt);
-  rect(ctx, cx - 1, y - 9, 2, 10, shade(shirt, -25)); // back seam
-  // head (back view: hair) — looking around when WAITING
-  const look = a.status === 'WAITING' && !d.reducedMotion ? Math.round(Math.sin(t * 0.8)) : 0;
-  rect(ctx, cx - 2, y - 13, 4, 3, skin); // neck
-  rect(ctx, cx - 5 + look, y - 21 - bob, 10, 9, hair);
-  rect(ctx, cx - 4 + look, y - 22 - bob, 8, 1, hair);
-  if (look !== 0) rect(ctx, look > 0 ? cx + 4 + look : cx - 6 + look, y - 17 - bob, 2, 3, skin); // ear
-  // chair backrest in front of the lower body
+  // The chair always remains at the desk. ONLINE/WAITING agents may
+  // wander in the nearby aisle as an idle animation; their authoritative
+  // state is still unchanged and all working/review activity stays at desk.
+  rect(ctx, cx - 11, cy - 4, 22, 14, chairC);
   rect(ctx, cx - 11, cy + 2, 22, 8, chairC);
   rect(ctx, cx - 11, cy + 2, 22, 2, shade(chairC, 25));
   rect(ctx, cx - 1, cy + 10, 2, 6, '#1b1f27');
   rect(ctx, cx - 8, cy + 15, 16, 2, '#1b1f27');
 
-  // status bubble
-  bubble(ctx, cx + 9, y - 36, a, t, d.reducedMotion);
+  if (off) return;
+
+  const idle = a.status === 'ONLINE' || a.status === 'WAITING';
+  const wander = idle && !d.reducedMotion;
+  const walkPhase = t * 0.9 + seed * 0.17;
+  const wx = wander ? cx + Math.round(Math.sin(walkPhase) * 34) : cx;
+  const wy = wander ? s.y + 91 + Math.round(Math.sin(walkPhase * 0.5) * 4) : cy;
+  const walking = wander && Math.abs(Math.cos(walkPhase)) > 0.18;
+  const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.6 + seed) > 0.6 ? 1 : 0;
+
+  if (wander) {
+    walkingCharacter(ctx, wx, wy, shirt, skin, hair, a.style, walking, walkPhase, seed);
+  } else {
+    const active = ['WORKING', 'REVIEWING', 'THINKING'].includes(a.status);
+    const bob = active && !d.reducedMotion ? Math.floor(t * 6) % 2 : 0;
+    const y = cy + breathe;
+
+    const lArm = active && !d.reducedMotion && Math.floor(t * 8) % 2 === 0 ? -1 : 0;
+    const rArm = active && !d.reducedMotion && Math.floor(t * 8) % 2 === 1 ? -1 : 0;
+
+    rect(ctx, cx - 10, y - 16 + lArm, 3, 9, shade(shirt, -20));
+    rect(ctx, cx + 7, y - 16 + rArm, 3, 9, shade(shirt, -20));
+    rect(ctx, cx - 10, y - 18 + lArm, 3, 2, skin);
+    rect(ctx, cx + 7, y - 18 + rArm, 3, 2, skin);
+    rect(ctx, cx - 8, y - 10, 16, 12, shirt);
+    rect(ctx, cx - 7, y - 11, 14, 1, shirt);
+    rect(ctx, cx - 1, y - 9, 2, 10, shade(shirt, -25));
+    const look = a.status === 'WAITING' && !d.reducedMotion ? Math.round(Math.sin(t * 0.8)) : 0;
+    rect(ctx, cx - 2, y - 13, 4, 3, skin);
+    rect(ctx, cx - 5 + look, y - 21 - bob, 10, 9, hair);
+    rect(ctx, cx - 4 + look, y - 22 - bob, 8, 1, hair);
+    if (look !== 0) rect(ctx, look > 0 ? cx + 4 + look : cx - 6 + look, y - 17 - bob, 2, 3, skin);
+    // desk chair back in front of a seated agent
+    rect(ctx, cx - 11, cy + 2, 22, 8, chairC);
+    rect(ctx, cx - 11, cy + 2, 22, 2, shade(chairC, 25));
+  }
+
+  bubble(ctx, (wander ? wx : cx) + 11, (wander ? wy : cy) - 36, a, t, d.reducedMotion);
+}
+
+function walkingCharacter(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  shirt: string,
+  skin: string,
+  hair: string,
+  style: string,
+  walking: boolean,
+  phase: number,
+  seed: number,
+) {
+  // shadow
+  rect(ctx, x - 9, y + 10, 18, 3, '#0b0e13');
+
+  // legs, alternating one pixel for a clear walk cycle
+  const step = walking ? (Math.floor(phase * 5) % 2) : 0;
+  const legA = step ? 1 : -1;
+  const legB = -legA;
+  rect(ctx, x - 5 + legA, y + 2, 5, 8, shade(shirt, -28));
+  rect(ctx, x + 1 + legB, y + 2, 5, 8, shade(shirt, -35));
+  rect(ctx, x - 6 + legA, y + 9, 6, 2, '#242933');
+  rect(ctx, x + legB, y + 9, 6, 2, '#242933');
+
+  // body silhouette with style-specific accent
+  rect(ctx, x - 8, y - 10, 16, 13, shirt);
+  rect(ctx, x - 7, y - 11, 14, 2, shirt);
+  if (style === 'reviewer') rect(ctx, x - 10, y - 7, 3, 8, '#4fc1b5');
+  if (style === 'researcher') rect(ctx, x + 7, y - 7, 3, 8, '#a78bfa');
+  if (style === 'builder') rect(ctx, x - 2, y - 9, 4, 8, shade(shirt, -24));
+
+  // arms swing opposite the legs
+  rect(ctx, x - 10 + legB, y - 7, 3, 8, shade(shirt, -20));
+  rect(ctx, x + 7 + legA, y - 7, 3, 8, shade(shirt, -20));
+  rect(ctx, x - 10 + legB, y + 1, 3, 2, skin);
+  rect(ctx, x + 7 + legA, y + 1, 3, 2, skin);
+
+  // head, hair, tiny facial pixel for readability when zoomed
+  rect(ctx, x - 5, y - 20, 10, 9, hair);
+  rect(ctx, x - 4, y - 21, 8, 1, hair);
+  rect(ctx, x - 4, y - 13, 8, 3, skin);
+  rect(ctx, x - 3, y - 13, 1, 1, '#20252f');
+  rect(ctx, x + 2, y - 13, 1, 1, '#20252f');
+
+  // agent-color badge on the back/head silhouette
+  rect(ctx, x - 2, y - 22, 4, 1, mix('#ffffff', shirt, 0.5));
+
+  // tiny status spark for idle agents; it is visual-only and never changes
+  // the actual AgentState represented by the office.
+  const spark = Math.floor(phase * 2 + seed) % 3;
+  if (spark === 0) rect(ctx, x + 11, y - 13, 2, 2, STATUS_HEX.ONLINE);
 }
 
 function bubble(ctx: CanvasRenderingContext2D, x: number, y: number, a: OfficeAgent, t: number, reduced: boolean) {
