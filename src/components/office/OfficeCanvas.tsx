@@ -80,7 +80,7 @@ export function OfficeCanvas({
   const fit = useCallback(() => {
     const el = wrap.current;
     if (!el) return;
-    const z = Math.min(el.clientWidth / WORLD.w, el.clientHeight / WORLD.h) * (compact ? 1 : 0.96);
+    const z = Math.min(el.clientWidth / WORLD.w, el.clientHeight / WORLD.h) * (compact ? 1 : 1.02);
     target.current = { x: WORLD.w / 2, y: WORLD.h / 2, zoom: Math.max(0.2, z) };
   }, [compact]);
 
@@ -197,7 +197,7 @@ export function OfficeCanvas({
   };
   const clamp = (c: Camera): Camera => {
     const el = wrap.current;
-    const zoom = Math.min(8, Math.max(0.25, c.zoom));
+    const zoom = Math.min(10, Math.max(0.28, c.zoom));
     if (!el) return { ...c, zoom };
     const hw = el.clientWidth / 2 / zoom;
     const hh = el.clientHeight / 2 / zoom;
@@ -208,7 +208,7 @@ export function OfficeCanvas({
   const zoomAt = (clientX: number, clientY: number, factor: number) => {
     const before = toWorld(clientX, clientY);
     const c = cam.current;
-    const zoom = Math.min(8, Math.max(0.25, c.zoom * factor));
+    const zoom = Math.min(10, Math.max(0.28, c.zoom * factor));
     const el = wrap.current!;
     const r = el.getBoundingClientRect();
     const next = { zoom, x: before.x - (clientX - r.left - r.width / 2) / zoom, y: before.y - (clientY - r.top - r.height / 2) / zoom };
@@ -242,7 +242,7 @@ export function OfficeCanvas({
   return (
     <div
       ref={wrap}
-      className="relative h-full w-full touch-none overflow-hidden bg-[#05070a] outline-none"
+      className="relative h-full w-full touch-none overflow-hidden bg-[#05070a] outline-none scanlines"
       style={{ cursor }}
       tabIndex={0}
       role="application"
