@@ -1,6 +1,6 @@
 import 'server-only';
-import { mkdir } from 'fs/promises';
-import { dirname } from 'path';
+import { mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { env } from '../env';
 
 /**
