@@ -194,7 +194,7 @@ supabase/migrations/   esquema SQL
 | Fase | Estado |
 |---|---|
 | DEMO (agentes simulados) | ✅ |
-| 1 Web, dashboard, proyecto, agentes, tareas, mensajes, BD, auth, realtime | ✅ implementado y probado |
+| 1 Web, dashboard, proyecto, agentes, tareas, mensajes, BD, auth, SSE | 🟡 implementado en código; build/E2E aún pendientes de ejecución |
 | 2 Agent Bridge, Claude Code local, Codex local, estado real | ✅ implementado (runners probados con el harness; los CLIs reales requieren tu máquina) |
 | 3 Oficina pixel art, animaciones, selección, panel | ✅ |
 | 4 Gemini, Perplexity, Firecrawl, Playwright, adaptadores MCP | ✅ adaptadores y configuración; se activan con tus claves / en tu bridge |
