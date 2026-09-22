@@ -12,7 +12,7 @@ export const POST = userRoute<{ id: string }>(async ({ req, db, user, params }) 
   const body = await readJson(req, approvalDecisionSchema);
   const project = await requireProject(db);
   const approval = await getApprovalForProject(db, project, params.id);
-  const out = await decideApproval(db, project, approval, userActor(user), body.decision === 'approve', body.note);
+  const out = await decideApproval(db, project, approval, userActor(user), body.decision === 'approve', body.note ?? '');
   after(() => drainHostedQueue());
   return { ok: true, ...out };
 });
