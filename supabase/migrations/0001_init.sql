@@ -9,7 +9,12 @@
 
 set client_min_messages = warning;
 
-create extension if not exists pgcrypto;
+-- PGlite does not ship pgcrypto. Keep UUID generation extension-free so local tests and
+-- managed PostgreSQL use the same migration. md5/random/clock_timestamp are core SQL functions.
+create or replace function acc_gen_random_uuid() returns uuid
+language sql volatile as $
+  select md5(random()::text || clock_timestamp()::text)::uuid
+$;
 
 -- ─────────────────────────────────────────────────────────────── helpers
 create or replace function acc_touch_updated_at() returns trigger
@@ -21,7 +26,7 @@ end $$;
 
 -- ─────────────────────────────────────────────────────────────── users
 create table if not exists users (
-  id               uuid primary key default gen_random_uuid(),
+  id               uuid primary key default acc_gen_random_uuid(),
   email            text not null,
   display_name     text not null,
   password_hash    text not null,
@@ -36,7 +41,7 @@ create unique index if not exists users_email_uq on users (lower(email));
 
 -- ─────────────────────────────────────────────────────────────── projects
 create table if not exists projects (
-  id              uuid primary key default gen_random_uuid(),
+  id              uuid primary key default acc_gen_random_uuid(),
   key             text not null check (key ~ '^[A-Z][A-Z0-9]{1,9}$'),
   name            text not null,
   description     text not null default '',
@@ -58,7 +63,7 @@ create unique index if not exists projects_key_uq on projects (key);
 
 -- ─────────────────────────────────────────────────────────────── agents
 create table if not exists agents (
-  id                uuid primary key default gen_random_uuid(),
+  id                uuid primary key default acc_gen_random_uuid(),
   project_id        uuid not null references projects(id) on delete cascade,
   slug              text not null check (slug ~ '^[a-z][a-z0-9-]{1,31}$'),
   name              text not null,
@@ -96,7 +101,7 @@ create table if not exists agent_capabilities (
 -- base + temporary permission grants. Effective permission = most recent
 -- non-revoked, non-expired row per (agent, action); temporary rows win.
 create table if not exists permissions (
-  id          uuid primary key default gen_random_uuid(),
+  id          uuid primary key default acc_gen_random_uuid(),
   agent_id    uuid not null references agents(id) on delete cascade,
   action      text not null,
   allowed     boolean not null,
@@ -112,7 +117,7 @@ create index if not exists permissions_agent_action_idx
 
 -- presence / session memory (volatile, small, updated in place)
 create table if not exists agent_sessions (
-  id                 uuid primary key default gen_random_uuid(),
+  id                 uuid primary key default acc_gen_random_uuid(),
   agent_id           uuid not null references agents(id) on delete cascade,
   started_at         timestamptz not null default now(),
   last_heartbeat_at  timestamptz not null default now(),
@@ -130,7 +135,7 @@ create index if not exists agent_sessions_open_idx
 
 -- ─────────────────────────────────────────────────────────────── conversations & tasks
 create table if not exists conversations (
-  id          uuid primary key default gen_random_uuid(),
+  id          uuid primary key default acc_gen_random_uuid(),
   project_id  uuid not null references projects(id) on delete cascade,
   task_id     uuid,
   kind        text not null default 'task' check (kind in ('task','general','direct')),
@@ -140,7 +145,7 @@ create table if not exists conversations (
 create index if not exists conversations_project_idx on conversations (project_id, created_at desc);
 
 create table if not exists tasks (
-  id                       uuid primary key default gen_random_uuid(),
+  id                       uuid primary key default acc_gen_random_uuid(),
   project_id               uuid not null references projects(id) on delete cascade,
   key                      text not null,
   seq                      integer not null,
@@ -183,7 +188,7 @@ alter table conversations
   add constraint conversations_task_fk foreign key (task_id) references tasks(id) on delete cascade;
 
 create table if not exists task_steps (
-  id          uuid primary key default gen_random_uuid(),
+  id          uuid primary key default acc_gen_random_uuid(),
   task_id     uuid not null references tasks(id) on delete cascade,
   agent_id    uuid references agents(id) on delete set null,
   user_id     uuid references users(id) on delete set null,
@@ -196,7 +201,7 @@ create index if not exists task_steps_task_idx on task_steps (task_id, created_a
 
 -- ─────────────────────────────────────────────────────────────── messages
 create table if not exists messages (
-  id                 uuid primary key default gen_random_uuid(),
+  id                 uuid primary key default acc_gen_random_uuid(),
   seq                bigint generated always as identity,
   project_id         uuid not null references projects(id) on delete cascade,
   task_id            uuid references tasks(id) on delete cascade,
@@ -230,7 +235,7 @@ create index if not exists messages_project_idx on messages (project_id, seq des
 
 -- one row per (message, recipient agent): the orchestrator's delivery queue
 create table if not exists deliveries (
-  id            uuid primary key default gen_random_uuid(),
+  id            uuid primary key default acc_gen_random_uuid(),
   message_id    uuid not null references messages(id) on delete cascade,
   agent_id      uuid not null references agents(id) on delete cascade,
   status        text not null default 'PENDING'
@@ -248,7 +253,7 @@ create index if not exists deliveries_queue_idx on deliveries (agent_id, created
 
 -- ─────────────────────────────────────────────────────────────── approvals
 create table if not exists approvals (
-  id                 uuid primary key default gen_random_uuid(),
+  id                 uuid primary key default acc_gen_random_uuid(),
   project_id         uuid not null references projects(id) on delete cascade,
   task_id            uuid references tasks(id) on delete cascade,
   requested_by_agent uuid references agents(id) on delete set null,
@@ -284,7 +289,7 @@ create index if not exists events_task_idx on events (task_id, id) where task_id
 create index if not exists events_created_idx on events (created_at);
 
 create table if not exists agent_runs (
-  id           uuid primary key default gen_random_uuid(),
+  id           uuid primary key default acc_gen_random_uuid(),
   agent_id     uuid not null references agents(id) on delete cascade,
   task_id      uuid references tasks(id) on delete set null,
   delivery_id  uuid references deliveries(id) on delete set null,
@@ -305,7 +310,7 @@ create index if not exists agent_runs_task_idx on agent_runs (task_id, started_a
 
 -- ─────────────────────────────────────────────────────────────── permanent memory
 create table if not exists project_context (
-  id          uuid primary key default gen_random_uuid(),
+  id          uuid primary key default acc_gen_random_uuid(),
   project_id  uuid not null references projects(id) on delete cascade,
   kind        text not null check (kind in ('rule','architecture','documentation','glossary','note','result')),
   title       text not null,
@@ -318,7 +323,7 @@ create table if not exists project_context (
 create index if not exists project_context_idx on project_context (project_id, pinned desc, updated_at desc);
 
 create table if not exists decisions (
-  id                 uuid primary key default gen_random_uuid(),
+  id                 uuid primary key default acc_gen_random_uuid(),
   project_id         uuid not null references projects(id) on delete cascade,
   task_id            uuid references tasks(id) on delete set null,
   title              text not null,
@@ -332,7 +337,7 @@ create table if not exists decisions (
 create index if not exists decisions_project_idx on decisions (project_id, created_at desc);
 
 create table if not exists reviews (
-  id              uuid primary key default gen_random_uuid(),
+  id              uuid primary key default acc_gen_random_uuid(),
   project_id      uuid not null references projects(id) on delete cascade,
   task_id         uuid references tasks(id) on delete cascade,
   reviewer_agent  uuid references agents(id) on delete set null,
@@ -346,7 +351,7 @@ create table if not exists reviews (
 create index if not exists reviews_task_idx on reviews (task_id, created_at desc);
 
 create table if not exists git_refs (
-  id           uuid primary key default gen_random_uuid(),
+  id           uuid primary key default acc_gen_random_uuid(),
   project_id   uuid not null references projects(id) on delete cascade,
   task_id      uuid references tasks(id) on delete cascade,
   kind         text not null check (kind in ('branch','commit','pr','issue')),
