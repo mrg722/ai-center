@@ -297,6 +297,7 @@ export const agentControlSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('cancel_run') }),
   z.object({ op: z.literal('issue_token') }),
   z.object({ op: z.literal('revoke_token') }),
+  z.object({ op: z.literal('set_model'), model: z.string().trim().min(1).max(200) }),
   z.object({
     op: z.literal('set_permission'),
     action: z.enum(PERMISSION_ACTIONS),
