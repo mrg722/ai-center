@@ -537,8 +537,8 @@ function desk(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dynamic
   const { t } = d;
   const off = a.status === 'OFFLINE';
   const h = hash(a.slug);
-  const isVercel = a.slug === 'vercel';
-  const isNvidia = a.slug === 'nvidia';
+  const isVercel = a.slug === 'vercel' || a.slug === 'vercel-ai-gateway';
+  const isNvidia = a.slug === 'nvidia' || a.slug === 'nvidia-nim';
   const dx = s.x + 20;
   const dy = s.y + 22;
   const dw = s.w - 40;
