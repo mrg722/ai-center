@@ -115,7 +115,7 @@ export async function postJson<T>(url: string, headers: Record<string, string>, 
     } catch {
       /* keep raw */
     }
-    throw new ProviderError(`${new URL(url).host} responded ${res.status}: ${msg}`, res.status);
+    const retryHint = res.status === 429 && Number.isFinite(retryAfterSeconds) ? ` Retry-After: ${retryAfterSeconds}s.` : '';\n    throw new ProviderError(`${new URL(url).host} responded ${res.status}: ${msg}${retryHint}`, res.status, Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : undefined);
   }
   return JSON.parse(text) as T;
 }
