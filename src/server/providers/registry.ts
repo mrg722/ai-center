@@ -9,11 +9,13 @@ import {
   genericOpenAIProvider,
   lmstudioProvider,
   mistralProvider,
+  nvidiaProvider,
   ollamaProvider,
   openaiProvider,
   openrouterProvider,
   perplexityProvider,
   qwenProvider,
+  nvidiaProvider,
   vercelAiGatewayProvider,
 } from './adapters';
 import { env, readApiKey } from '../env';
@@ -84,6 +86,7 @@ const ALL: Runtime[] = [
   deepseekProvider,
   mistralProvider,
   qwenProvider,
+  nvidiaProvider,
   vercelAiGatewayProvider,
   ollamaProvider,
   lmstudioProvider,
@@ -137,7 +140,8 @@ const TRUSTED_ORIGINS: Record<string, string[]> = {
   deepseek: ['https://api.deepseek.com'],
   mistral: ['https://api.mistral.ai'],
   qwen: ['https://dashscope-intl.aliyuncs.com'],
-  'vercel-ai-gateway': ['https://ai-gateway.vercel.sh'],\n  'nvidia-nim': ['https://integrate.api.nvidia.com'],
+  'vercel-ai-gateway': ['https://ai-gateway.vercel.sh'],
+  'nvidia-nim': ['https://integrate.api.nvidia.com'],
 };
 
 function trustedBaseUrl(p: Runtime, raw: string | undefined): { url: string; ok: boolean; reason?: string } {
