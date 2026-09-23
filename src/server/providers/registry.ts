@@ -127,18 +127,89 @@ export function resolveModel(p: Runtime, model: string): string {
   return model || (p.modelEnv ? process.env[p.modelEnv] : undefined) || p.defaultModel || '';
 }
 
+import { env, readApiKey } from '../env';
+
+const TRUSTED_ORIGINS: Record<string, string[]> = {
+  anthropic: ['https://api.anthropic.com'],
+  openai: ['https://api.openai.com'],
+  gemini: ['https://generativelanguage.googleapis.com'],
+  perplexity: ['https://api.perplexity.ai'],
+  openrouter: ['https://openrouter.ai'],
+  deepseek: ['https://api.deepseek.com'],
+  mistral: ['https://api.mistral.ai'],
+  qwen: ['https://dashscope-intl.aliyuncs.com'],
+  'vercel-ai-gateway': ['https://ai-gateway.vercel.sh'],
+};
+
+function originOf(raw: string): string {
+  return new URL(raw).origin;
+}
+
+function trustedBaseUrl(p: Runtime, raw: string | undefined): { url: string; ok: boolean; reason?: string } {
+  if (!raw) return { url: p.defaultBaseUrl ?? '', ok: Boolean(p.defaultBaseUrl) };
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return { url: raw, ok: false, reason: 'invalid base URL' };
+  }
+
+  // Built-in keyed providers are never allowed to send their secret to an
+  // operator-controlled host. The configured provider key is also fixed below.
+  if (p.apiKeyEnv) {
+    const allowed = TRUSTED_ORIGINS[p.id] ?? [];
+    if (!allowed.includes(url.origin)) {
+      return { url: raw, ok: false, reason: 'base URL is not trusted for this provider' };
+    }
+    if (url.protocol !== 'https:') return { url: raw, ok: false, reason: 'provider endpoints must use HTTPS' };
+    return { url: raw, ok: true };
+  }
+
+  // Custom HTTP/MCP runtimes intentionally have no server-side API key.
+  // In production they must be explicitly allowlisted by the operator.
+  if (p.id === 'generic-http' || p.id === 'generic-mcp' || p.id === 'openai-compatible') {
+    const allowedHosts = env.allowedCustomHosts;
+    if (!allowedHosts.includes(url.hostname.toLowerCase())) {
+      return { url: raw, ok: false, reason: 'custom endpoint host is not in ACC_ALLOWED_CUSTOM_HOSTS' };
+    }
+    if (url.protocol !== 'https:') return { url: raw, ok: false, reason: 'custom endpoints must use HTTPS' };
+    return { url: raw, ok: true };
+  }
+
+  // Local model servers never receive hosted secrets and are useful only from
+  // a local/bridge-capable environment. Keep them out of production Vercel.
+  if (p.id === 'ollama' || p.id === 'lmstudio') {
+    if (env.isProduction) return { url: raw, ok: false, reason: 'local model endpoints are disabled in production' };
+    return { url: raw, ok: /^https?:$/.test(url.protocol) };
+  }
+
+  return { url: raw, ok: false, reason: 'runtime endpoint is not allowlisted' };
+}
+
+function resolveKeyEnv(p: Runtime): string | undefined {
+  // A runtime can never choose another built-in provider's secret through the
+  // database. This closes the api_key_env + arbitrary base_url exfiltration
+  // path. Custom runtimes receive no server-side secret.
+  return p.apiKeyEnv;
+}
+
 export function resolveHttpConfig(p: Runtime, cfg: AgentConfig): ResolvedHttpConfig {
-  const envName = cfg.api_key_env || p.apiKeyEnv;
+  const envName = resolveKeyEnv(p);
+  const requestedBase = p.baseUrlEditable ? cfg.base_url : p.defaultBaseUrl;
+  const endpoint = trustedBaseUrl(p, requestedBase);
   return {
-    baseUrl: (p.baseUrlEditable && cfg.base_url) || p.defaultBaseUrl || cfg.base_url || '',
-    apiKey: readApiKey(envName),
-    config: { ...cfg, api_key_env: envName },
+    baseUrl: endpoint.url,
+    apiKey: envName ? readApiKey(envName) : undefined,
+    config: { ...cfg, api_key_env: envName, base_url: endpoint.ok ? endpoint.url : '' },
   };
 }
 
 /** Whether an http-api runtime can run right now (key, base URL, model). */
 export function httpReadiness(p: Runtime, cfg: AgentConfig, model: string): { ready: boolean; reason?: string } {
   if (!isHttpRuntime(p)) return { ready: false, reason: 'not an http-api runtime' };
+  const requestedBase = p.baseUrlEditable ? cfg.base_url : p.defaultBaseUrl;
+  const endpoint = trustedBaseUrl(p, requestedBase);
+  if (!endpoint.ok) return { ready: false, reason: endpoint.reason ?? 'endpoint not trusted' };
   const r = resolveHttpConfig(p, cfg);
   if (!r.apiKey && !p.apiKeyOptional) return { ready: false, reason: `${r.config.api_key_env} not set on the server` };
   if (!r.baseUrl) return { ready: false, reason: 'base URL not configured' };
