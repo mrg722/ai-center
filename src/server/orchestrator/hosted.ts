@@ -11,6 +11,7 @@ import { claimDeliveries, postMessage } from './router';
 import { completeDelivery, toInboxItems } from './runs';
 import { getProjectById, getTask } from './repo';
 import { simulate } from './simulator';
+import { nvidiaModelAvailable } from '../providers/nvidia';
 
 /**
  * Runner for runtimes the ORCHESTRATOR executes itself:
@@ -184,7 +185,24 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
       }
     }
     const client = `${runtime.runtime} · ${runtime.provider.name}`;
-    await setSession(db, agent, item.message.message_type === 'REVIEW' ? 'REVIEWING' : 'THINKING', `answering ${item.message.message_type} from ${item.message.from}`, taskId, client);
+    const messageModel = typeof item.message.meta?.model === 'string' ? item.message.meta.model.trim() : '';
+    if (messageModel && runtime.id !== 'nvidia-nim') {
+      await completeDelivery(db, agent, delivery.id, { status: 'FAILED', error: 'model override is only supported by NVIDIA NIM' });
+      return;
+    }
+    if (messageModel && runtime.id === 'nvidia-nim') {
+      try {
+        if (!(await nvidiaModelAvailable(messageModel))) {
+          await completeDelivery(db, agent, delivery.id, { status: 'FAILED', error: 'NVIDIA model is no longer available in the current catalogue' });
+          return;
+        }
+      } catch (e) {
+        await completeDelivery(db, agent, delivery.id, { status: 'FAILED', error: (e as Error).message.slice(0, 500) });
+        return;
+      }
+    }
+    await setSession(db, agent, item.message.message_type === 'REVIEW' ? 'REVIEWING' : 'THINKING', 
+      messageModel ? `answering with ${messageModel}` : `answering ${item.message.message_type} from ${item.message.from}`, taskId, client);
 
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 180_000);
@@ -193,7 +211,7 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
         {
           system: `You are ${agent.name}, ${agent.role_label || agent.role}, a member of a multi-agent software team coordinated by the AI Command Center orchestrator. Follow the rules in the context.`,
           prompt: item.context.prompt,
-          model: resolveModel(runtime, agent.model),
+          model: messageModel || resolveModel(runtime, agent.model),
           maxTokens: agent.config.max_tokens ?? 4096,
           temperature: agent.config.temperature ?? 0.3,
           signal: ctrl.signal,

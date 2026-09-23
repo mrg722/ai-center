@@ -29,9 +29,22 @@ export const POST = userRoute(async ({ req, db, user }) => {
   const body = await readJson(req, userMessageSchema);
   const project = await requireProject(db);
   const task = body.task_id ? await findTask(db, project.id, body.task_id) : null;
+  let targetAgent = null;
   if (body.to !== 'room' && body.to !== 'all') {
-    const a = await getAgent(db, body.to);
-    if (a.project_id !== project.id) throw new HttpError(400, 'unknown agent');
+    targetAgent = await getAgent(db, body.to);
+    if (targetAgent.project_id !== project.id) throw new HttpError(400, 'unknown agent');
+  }
+  if (body.model) {
+    if (!targetAgent || targetAgent.runtime !== 'nvidia-nim') {
+      throw new HttpError(400, 'model override is currently supported only for the NVIDIA NIM agent');
+    }
+    const { nvidiaModelAvailable } = await import('@/server/providers/nvidia');
+    try {
+      if (!(await nvidiaModelAvailable(body.model))) throw new HttpError(400, 'modelo NVIDIA no disponible en el catálogo actual');
+    } catch (e) {
+      if (e instanceof HttpError) throw e;
+      throw new HttpError(502, (e as Error).message.slice(0, 500));
+    }
   }
   const { message, deliveries } = await postMessage(db, {
     project,
@@ -43,6 +56,7 @@ export const POST = userRoute(async ({ req, db, user }) => {
     priority: body.priority,
     replyTo: body.reply_to ?? null,
     requiresAction: body.to !== 'room',
+    meta: body.model ? { model: body.model, provider: 'nvidia-nim' } : undefined,
   });
   after(() => drainHostedQueue());
   return { message_id: message.id, deliveries: deliveries.length, held: deliveries.filter((d) => d.status === 'HELD').length };

@@ -112,6 +112,18 @@ export async function runSetup(
         caps: ['code.review', 'code.fix', 'tests.run', 'git.integrate'],
       },
       {
+        slug: 'nvidia',
+        name: 'NVIDIA NIM',
+        runtime: 'nvidia-nim',
+        transport: 'http-api',
+        role: 'GENERIC',
+        role_label: 'NVIDIA multimodel',
+        description: 'NVIDIA NIM API Catalog with one agent and dynamic model switching.',
+        color: '#76b900',
+        config: { office_style: 'generic', api_key_env: 'NVIDIA_API_KEY' },
+        caps: ['analysis', 'code.review', 'research', 'multi-model'],
+      },
+      {
         slug: 'gemini',
         name: 'Gemini',
         runtime: 'antigravity',

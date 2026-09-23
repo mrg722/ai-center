@@ -211,6 +211,8 @@ export const userMessageSchema = z.object({
   content: text(60_000).min(1),
   priority: z.enum(PRIORITIES).default('NORMAL'),
   reply_to: id.nullable().optional(),
+  /** Per-message model override; currently supported by the NVIDIA multimodel agent. */
+  model: z.string().trim().min(1).max(200).optional(),
 });
 
 export const taskControlSchema = z.discriminatedUnion('op', [
