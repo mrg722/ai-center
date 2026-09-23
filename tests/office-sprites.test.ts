@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getOfficeAnimation, getSpriteFrame } from '@/components/office/animationMachine';
 import { getBotMotion, getMovement, shouldWalkForMessage } from '@/components/office/movement';
 import { resolveSpriteProfile } from '@/components/office/sprites';
+import { computeLayout, pointOf, type OfficeAgent } from '@/components/office/scene';
 
 describe('AI Office sprite state machine', () => {
   it('maps orchestrator status to visual animation without changing the status', () => {
@@ -35,6 +36,25 @@ describe('AI Office sprite state machine', () => {
     expect(motion.animation).toBe('walking');
   });
 
+
+
+  it('does not invent a server destination for stale realtime events', () => {
+    const agents: OfficeAgent[] = [{
+      id: 'claude-id',
+      slug: 'claude',
+      name: 'Claude',
+      color: '#f97316',
+      status: 'ONLINE',
+      style: 'builder',
+      paused: false,
+      simulated: false,
+    }];
+    const layout = computeLayout(agents);
+    expect(pointOf(layout, 'claude-id')).not.toBeNull();
+    expect(pointOf(layout, 'moderator')).not.toBeNull();
+    expect(pointOf(layout, 'system')).not.toBeNull();
+    expect(pointOf(layout, 'missing-agent')).toBeNull();
+  });
 
   it('keeps each reference character visually distinct', () => {
     expect(resolveSpriteProfile('claude', '#fff').kind).toBe('claude');
