@@ -12,6 +12,7 @@ import {
   setPermission,
 } from '@/server/orchestrator/moderator';
 import { drainHostedQueue } from '@/server/orchestrator/hosted';
+import { nvidiaModelAvailable } from '@/server/providers/nvidia';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,11 @@ export const POST = userRoute<{ id: string }>(
       case 'revoke_token':
         await revokeToken(db, agent, actor);
         return { ok: true };
+      case 'set_model':
+        if (agent.runtime !== 'nvidia-nim') throw new HttpError(400, 'model switching is only available for NVIDIA NIM');
+        if (!(await nvidiaModelAvailable(body.model))) throw new HttpError(400, 'NVIDIA model is not available in the current catalogue');
+        await db.query('update agents set model=$2 where id=$1', [agent.id, body.model]);
+        return { ok: true, model: body.model };
       case 'set_permission':
         await setPermission(db, agent, actor, {
           action: body.action,
