@@ -236,18 +236,23 @@ export function paintStatic(ctx: CanvasRenderingContext2D, layout: Layout, agent
   const dusk = (hour >= 18 && hour < 20) || (hour >= 6 && hour < 8);
   const skyTop = night ? '#0b1430' : dusk ? '#3b2a4f' : '#3c6ea8';
   const skyBot = night ? '#1b2748' : dusk ? '#c0735a' : '#8fb8de';
-  for (const wx of [40, 136, 232, 328]) {
-    rect(ctx, wx - 2, 10, 60, 24, '#11151c');
-    for (let i = 0; i < 20; i++) rect(ctx, wx, 12 + i, 56, 1, mix(skyTop, skyBot, i / 20));
-    // skyline silhouettes
+  for (const wx of [14, 116, 218, 320, 422, 524, 626, 728]) {
+    rect(ctx, wx - 2, 10, 88, 52, '#11151c');
+    for (let i = 0; i < 48; i++) rect(ctx, wx, 12 + i, 84, 1, mix(skyTop, skyBot, i / 48));
     const r2 = rng(wx);
-    for (let bx = wx; bx < wx + 56; bx += 6) {
-      const bh = 3 + Math.floor(r2() * 9);
-      rect(ctx, bx, 32 - bh, 5, bh, night ? '#0a0f1e' : '#2c3c55');
-      if (night) for (let k = 0; k < 2; k++) if (r2() < 0.6) rect(ctx, bx + 1 + Math.floor(r2() * 3), 33 - bh + Math.floor(r2() * bh), 1, 1, '#f2d27a');
+    for (let bx = wx; bx < wx + 84; bx += 7) {
+      const bh = 5 + Math.floor(r2() * 18);
+      rect(ctx, bx, 58 - bh, 6, bh, night ? '#0a0f1e' : '#2c3c55');
+      if (night) for (let k = 0; k < 2; k++) if (r2() < 0.6) rect(ctx, bx + 1 + Math.floor(r2() * 4), 57 - bh + Math.floor(r2() * bh), 1, 1, '#f2d27a');
     }
-    rect(ctx, wx + 27, 12, 2, 20, '#11151c');
-    rect(ctx, wx, 21, 56, 1, '#11151c');
+    rect(ctx, wx + 41, 12, 2, 48, '#11151c');
+    rect(ctx, wx, 34, 84, 2, '#11151c');
+  }
+  // Long sill and warm ceiling fixtures echo the reference office.
+  rect(ctx, 8, 62, w - 16, 4, '#11151c');
+  for (const lx of [92, 288, 484, 680]) {
+    rect(ctx, lx, 4, 16, 5, '#151a22');
+    rect(ctx, lx + 5, 9, 6, 4, '#2a303a');
   }
 
   // wall shelves with books (top-left, against wall)
@@ -342,11 +347,48 @@ export function paintStatic(ctx: CanvasRenderingContext2D, layout: Layout, agent
   rect(ctx, 588, 128, 10, 12, '#2a303b');
   rect(ctx, 588, 128, 10, 2, '#3a4250');
 
-  // wall labels
+  // Reference-room identity panels: these are decoration only; no operational state is invented here.
+  planBoard(ctx, 18, 86);
+  nvidiaLab(ctx, 642, 72);
+  bookshelf(ctx, 24, 174, 84, R);
+  bookshelf(ctx, 706, 354, 96, R);
   drawText(ctx, 'AI COMMAND CENTER', 506, 20, '#4a5568');
   drawText(ctx, 'MOD', m.x + 82, m.y + 44, '#8a7440');
   drawText(ctx, 'LOUNGE', 698, 470, '#3b4556');
   drawText(ctx, 'KITCHEN', 20, 490, '#3b4556');
+}
+
+function planBoard(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  rect(ctx, x, y, 70, 104, '#0b1016');
+  rect(ctx, x + 2, y + 2, 66, 100, '#18202a');
+  drawText(ctx, 'PLAN', x + 8, y + 10, '#dbe2ec');
+  drawText(ctx, 'BUILD', x + 8, y + 22, '#dbe2ec');
+  drawText(ctx, 'AUTOMATE', x + 8, y + 34, '#dbe2ec');
+  drawText(ctx, 'IMPROVE', x + 8, y + 46, '#dbe2ec');
+  drawText(ctx, 'REPEAT', x + 8, y + 58, '#dbe2ec');
+  rect(ctx, x + 8, y + 76, 18, 2, '#f2b544');
+  rect(ctx, x + 28, y + 76, 12, 2, '#4fc1b5');
+  rect(ctx, x + 42, y + 76, 8, 2, '#8b97a8');
+  rect(ctx, x + 8, y + 84, 34, 2, '#e8b04a');
+  rect(ctx, x + 8, y + 92, 24, 2, '#6fb3d9');
+}
+
+function nvidiaLab(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  rect(ctx, x, y, 172, 124, '#102018');
+  rect(ctx, x + 2, y + 2, 168, 120, '#17251a');
+  rect(ctx, x + 58, y + 7, 58, 26, '#0a0f0b');
+  rect(ctx, x + 66, y + 11, 42, 13, '#1e2b20');
+  rect(ctx, x + 76, y + 14, 22, 6, '#76b900');
+  drawText(ctx, 'NVIDIA', x + 64, y + 36, '#dbe2ec');
+  for (const sx of [x + 12, x + 72, x + 130]) {
+    rect(ctx, sx, y + 48, 34, 22, '#0d1210');
+    rect(ctx, sx + 2, y + 50, 30, 15, '#16221a');
+    rect(ctx, sx + 4, y + 53, 22, 2, '#76b900');
+    rect(ctx, sx + 4, y + 58, 18, 2, '#4b6f2b');
+  }
+  rect(ctx, x + 12, y + 78, 148, 2, '#28442b');
+  drawText(ctx, 'AI INFRASTRUCTURE', x + 34, y + 90, '#76b900');
+  drawText(ctx, 'ACCELERATION', x + 48, y + 102, '#9bb78a');
 }
 
 function roundRug(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, c1: string, c2: string) {
