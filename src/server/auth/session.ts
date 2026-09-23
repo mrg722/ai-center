@@ -52,10 +52,6 @@ export async function getSessionUser(db: Db): Promise<SessionUser | null> {
   const p = unsign<SessionPayload>(raw, env.sessionSecret);
   if (!p || p.exp < Date.now() / 1000) return null;
 
-  if (!env.databaseUrl && env.isProduction && p.email && p.display_name && p.role) {
-    return { id: p.uid, email: p.email, display_name: p.display_name, role: p.role };
-  }
-
   const r = await db.query<UserRow>('select id, email, display_name, role, session_version from users where id=$1', [p.uid]);
   const u = r.rows[0];
   if (!u || u.session_version !== p.v) return null;
