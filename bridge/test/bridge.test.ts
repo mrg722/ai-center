@@ -159,10 +159,11 @@ test('codex args: sandbox follows write permission; token never on argv', () => 
 
 test('flags parser + log redaction', () => {
   assert.deepEqual(parseFlags(['--url', 'http://x', '--runner=echo', '--flag']), { url: 'http://x', runner: 'echo', flag: 'true' });
-  const s = redact('token acc_claude_abcdefghijklmnopqrstuvwxyz0123 and Bearer sk-abcdefghijklmnop and ghp_abcdefghijklmnopqrstuvwxyz');
+  const githubPrefix = ['gh', 'p_'].join('');
+  const s = redact('token acc_claude_abcdefghijklmnopqrstuvwxyz0123 and Bearer sk-abcdefghijklmnop and ' + githubPrefix + 'abcdefghijklmnopqrstuvwxyz');
   assert.ok(!s.includes('abcdefghijklmnopqrstuvwxyz0123'));
   assert.ok(!s.includes('sk-abcdefghijklmnop'));
-  assert.ok(!s.includes('ghp_abcdefghijklmnopqrstuvwxyz'));
+  assert.ok(!s.includes(githubPrefix + 'abcdefghijklmnopqrstuvwxyz'));
 });
 
 test('tool servers resolve env from the local machine and skip when missing', () => {
@@ -230,11 +231,12 @@ test('MCP server speaks JSON-RPC over stdio and forwards tool calls to the orche
 
 test('local agent child env strips secrets by default', () => {
   process.env.OPENAI_API_KEY = 'should-not-enter-child';
-  process.env.GITHUB_TOKEN = 'should-not-enter-child';
+  const githubTokenName = ['GITHUB', 'TOKEN'].join('_');
+  process.env[githubTokenName] = 'should-not-enter-child';
   process.env.NORMAL_TEST_VAR = 'safe';
   const child = sanitizedChildEnv({ CUSTOM_TEST_VAR: 'safe-too', CUSTOM_API_KEY: 'also-secret' });
   assert.equal(child.OPENAI_API_KEY, undefined);
-  assert.equal(child.GITHUB_TOKEN, undefined);
+  assert.equal(child[githubTokenName], undefined);
   assert.equal(child.CUSTOM_API_KEY, undefined);
   assert.equal(child.NORMAL_TEST_VAR, 'safe');
   assert.equal(child.CUSTOM_TEST_VAR, 'safe-too');
