@@ -134,12 +134,11 @@ const postNvidia = userRoute(async ({ req, db, user }) => {
 });
 
 
-type NvidiaRouteContext = { params: Promise<Record<string, string>> };
 
-export async function GET(req: NextRequest, ctx: NvidiaRouteContext) {
-  return getNvidia(req, ctx);
+export async function GET(req: NextRequest) {
+  return getNvidia(req, { params: Promise.resolve({}) });
 }
 
-export async function POST(req: NextRequest, ctx: NvidiaRouteContext) {
-  return postNvidia(req, ctx);
+export async function POST(req: NextRequest) {
+  return postNvidia(req, { params: Promise.resolve({}) });
 }
