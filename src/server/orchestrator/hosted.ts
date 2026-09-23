@@ -157,19 +157,27 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
       return;
     }
     let effectiveModel = resolveModel(runtime, agent.model);
-    if (runtime.id === 'nvidia-nim') {
-      const resolved = await resolveNvidiaModel(effectiveModel);
-      effectiveModel = resolved.model;
-      if (resolved.repaired) {
-        await db.query('update agents set model=$2 where id=$1', [agent.id, effectiveModel]);
-        await emit(db, {
-          project_id: project.id,
-          type: 'agent.updated',
-          actor: agentActor(agent),
-          agent_id: agent.id,
-          payload: { model_repaired: true, model: effectiveModel },
-        });
+    try {
+      if (runtime.id === 'nvidia-nim') {
+        const resolved = await resolveNvidiaModel(effectiveModel);
+        effectiveModel = resolved.model;
+        if (resolved.repaired) {
+          await db.query('update agents set model=$2 where id=$1', [agent.id, effectiveModel]);
+          await emit(db, {
+            project_id: project.id,
+            type: 'agent.updated',
+            actor: agentActor(agent),
+            agent_id: agent.id,
+            payload: { model_repaired: true, model: effectiveModel },
+          });
+        }
       }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'NVIDIA model catalogue unavailable';
+      await completeDelivery(db, agent, delivery.id, { status: 'FAILED', error: msg });
+      await setSession(db, agent, 'ERROR', msg, taskId, client);
+      await emit(db, { project_id: project.id, type: 'agent.error', actor: agentActor(agent), agent_id: agent.id, task_id: taskId, payload: { error: msg.slice(0, 300) } });
+      return;
     }
     const ready = httpReadiness(runtime, agent.config, effectiveModel);
     if (!ready.ready) {
