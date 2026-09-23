@@ -3,8 +3,8 @@ import type { AgentRow, ProjectRow } from '../types';
 import type { InboxItem } from '../../shared/protocol';
 import { emit, emitEphemeral } from '../events/bus';
 import { getRuntime, httpReadiness, resolveHttpConfig, resolveModel } from '../providers/registry';
-import { resolveNvidiaModel } from '../providers/nvidia';
-import { isHttpRuntime } from '../providers/types';
+import { invalidateNvidiaModelsCache, resolveNvidiaModel } from '../providers/nvidia';
+import { isHttpRuntime, ProviderError } from '../providers/types';
 import { parseAgentReply } from './action-parser';
 import { validateAgentAction } from '../validation';
 import { executeAgentAction, agentActor, authorize } from './actions';
@@ -213,17 +213,40 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 180_000);
     try {
-      const out = await runtime.generate(
-        {
-          system: `You are ${agent.name}, ${agent.role_label || agent.role}, a member of a multi-agent software team coordinated by the AI Command Center orchestrator. Follow the rules in the context.`,
-          prompt: item.context.prompt,
-          model: effectiveModel,
-          maxTokens: agent.config.max_tokens ?? 4096,
-          temperature: agent.config.temperature ?? 0.3,
-          signal: ctrl.signal,
-        },
-        resolveHttpConfig(runtime, agent.config),
-      );
+      const request = () =>
+        runtime.generate(
+          {
+            system: `You are ${agent.name}, ${agent.role_label || agent.role}, a member of a multi-agent software team coordinated by the AI Command Center orchestrator. Follow the rules in the context.`,
+            prompt: item.context.prompt,
+            model: effectiveModel,
+            maxTokens: agent.config.max_tokens ?? 4096,
+            temperature: agent.config.temperature ?? 0.3,
+            signal: ctrl.signal,
+          },
+          resolveHttpConfig(runtime, agent.config),
+        );
+
+      let out;
+      try {
+        out = await request();
+      } catch (e) {
+        // NVIDIA's control plane can briefly disagree with its /v1/models
+        // catalogue. If the selected function/model returns 404, refresh the
+        // catalogue and retry once with a different available model.
+        if (runtime.id !== 'nvidia-nim' || !(e instanceof ProviderError) || e.status !== 404) throw e;
+        invalidateNvidiaModelsCache();
+        const retry = await resolveNvidiaModel(effectiveModel, [effectiveModel]);
+        effectiveModel = retry.model;
+        await db.query('update agents set model=$2 where id=$1', [agent.id, effectiveModel]);
+        await emit(db, {
+          project_id: project.id,
+          type: 'agent.updated',
+          actor: agentActor(agent),
+          agent_id: agent.id,
+          payload: { model_repaired: true, model: effectiveModel, reason: 'provider_404_retry' },
+        });
+        out = await request();
+      }
       await setSession(db, agent, 'WORKING', 'posting result', taskId, client);
       const parsed = parseAgentReply(out.text);
       // 1) reply text to the room, 2) declared actions through policy, 3) finalize delivery
