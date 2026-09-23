@@ -257,7 +257,7 @@ function AgentForm({ open, onClose, providers, agent }: { open: boolean; onClose
       enabled: f.enabled,
       config: {
         ...(f.base_url ? { base_url: f.base_url } : {}),
-        ...(f.api_key_env ? { api_key_env: f.api_key_env } : {}),
+        ...(p?.apiKeyEnv ? { api_key_env: p.apiKeyEnv } : {}),
         ...(f.office_style ? { office_style: f.office_style } : {}),
         ...(f.system_prompt_extra ? { system_prompt_extra: f.system_prompt_extra } : {}),
       },
@@ -276,7 +276,21 @@ function AgentForm({ open, onClose, providers, agent }: { open: boolean; onClose
       <form onSubmit={save} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Runtime (proveedor · transporte)" hint={p ? `${p.provider.name} · ${p.runtime} · ${p.transport}` : undefined}>
-            <select className={inputCls} value={f.runtime} onChange={(e) => set('runtime', e.target.value)} disabled={false}>
+            <select
+              className={inputCls}
+              value={f.runtime}
+              onChange={(e) => {
+                const runtime = e.target.value;
+                const next = providers.find((x) => x.id === runtime);
+                setF((state) => ({
+                  ...state,
+                  runtime,
+                  model: next?.defaultModel ?? '',
+                  api_key_env: next?.apiKeyEnv ?? '',
+                }));
+              }}
+              disabled={false}
+            >
               {providers.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.label} {x.transport === 'http-api' && x.apiKeyEnv ? (x.apiKeyPresent ? '· key ✓' : '· sin key') : ''}
@@ -309,9 +323,9 @@ function AgentForm({ open, onClose, providers, agent }: { open: boolean; onClose
               <input className={inputCls} value={f.base_url} onChange={(e) => set('base_url', e.target.value)} type="url" />
             </Field>
           )}
-          {p?.transport === 'http-api' && (
-            <Field label="Variable de entorno con la API key" hint="El NOMBRE de la variable (termina en _API_KEY o _TOKEN). Nunca pegues la clave aquí.">
-              <input className={inputCls} value={f.api_key_env} onChange={(e) => set('api_key_env', e.target.value.toUpperCase())} placeholder={p.apiKeyEnv ?? 'MY_PROVIDER_API_KEY'} />
+          {p?.transport === 'http-api' && p.apiKeyEnv && (
+            <Field label="Variable de entorno con la API key" hint="Fijada por el proveedor. La clave secreta nunca se introduce en este formulario.">
+              <div className={cx(inputCls, 'font-mono text-[11px] text-fg-muted')}>{p.apiKeyEnv}</div>
             </Field>
           )}
           <Field label="Color">
