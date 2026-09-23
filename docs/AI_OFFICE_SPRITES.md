@@ -31,3 +31,21 @@ The scene is a canvas renderer. The render loop uses requestAnimationFrame with 
 ## Research basis
 
 Browser animation should use requestAnimationFrame rather than timer-driven frame loops, and short repeated frame sequences are a common sprite-animation pattern. The implementation keeps those principles while using procedural pixel frames to avoid introducing unverified external art assets.
+
+## Reference character identities
+
+The current office design is based on the supplied AI Command Center reference image. The renderer intentionally gives each visible entity its own authored pixel silhouette instead of applying a generic human template:
+
+| Entity | Visual identity |
+| --- | --- |
+| Claude Code | orange hooded builder with dark face/visor and orange workwear |
+| ChatGPT | white/cyan compact robot with dark visor and green chest mark |
+| Antigravity | blue-and-white astronaut/robot with blue helmet and visor |
+| Vercel AI Gateway | dark robot with a multicolor display/head and bright accents |
+| NVIDIA | green accelerator robot with dark visor and NVIDIA-green body |
+| Martin / moderator | human project lead with dark hair, glasses and gold moderator accent |
+| bot | small orange-and-white dog mascot; visual-only and never an orchestrator agent |
+
+Provider aliases (gpt, openai, chatgpt, vercel-ai-gateway, nvidia-nim, gemini) resolve to the same visual identity so database/runtime naming does not change the art.
+
+The scene layout is also composed around the reference: Martin is centered at the upper command desk, the four main agent desks form the working row, NVIDIA has a dedicated lab, and the bot has an independent route through the office.
