@@ -4,7 +4,7 @@
   "private": true,
   "description": "Multi-agent command center: Claude, GPT/Codex, Gemini and more, coordinated by an orchestrator with a human moderator in charge.",
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "next dev",
