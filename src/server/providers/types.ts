@@ -104,6 +104,7 @@ export async function postJson<T>(url: string, headers: Record<string, string>, 
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
     signal,
+    redirect: 'error',
   });
   const text = await res.text();
   if (!res.ok) {
