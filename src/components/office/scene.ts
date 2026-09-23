@@ -636,9 +636,8 @@ function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dy
   const skin = SKIN[(seed >> 3) % SKIN.length];
   const shirt = a.color;
 
-  // The chair always remains at the desk. ONLINE/WAITING agents may
-  // wander in the nearby aisle as an idle animation; their authoritative
-  // state is still unchanged and all working/review activity stays at desk.
+  // Compact original avatar: same footprint, but with more readable pixel-art
+  // silhouette, face, clothing details and role-specific accessories.
   rect(ctx, cx - 11, cy - 4, 22, 14, chairC);
   rect(ctx, cx - 11, cy + 2, 22, 8, chairC);
   rect(ctx, cx - 11, cy + 2, 22, 2, shade(chairC, 25));
@@ -664,27 +663,53 @@ function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dy
 
     const lArm = active && !d.reducedMotion && Math.floor(t * 8) % 2 === 0 ? -1 : 0;
     const rArm = active && !d.reducedMotion && Math.floor(t * 8) % 2 === 1 ? -1 : 0;
-
     rect(ctx, cx - 10, y - 16 + lArm, 3, 9, shade(shirt, -20));
     rect(ctx, cx + 7, y - 16 + rArm, 3, 9, shade(shirt, -20));
     rect(ctx, cx - 10, y - 18 + lArm, 3, 2, skin);
     rect(ctx, cx + 7, y - 18 + rArm, 3, 2, skin);
+
+    // Torso with a tiny role marker.
     rect(ctx, cx - 8, y - 10, 16, 12, shirt);
-    rect(ctx, cx - 7, y - 11, 14, 1, shirt);
+    rect(ctx, cx - 7, y - 11, 14, 1, shade(shirt, 12));
     rect(ctx, cx - 1, y - 9, 2, 10, shade(shirt, -25));
+    if (a.style === 'reviewer') {
+      rect(ctx, cx - 6, y - 8, 3, 2, '#e8f0f0');
+      rect(ctx, cx + 3, y - 8, 3, 2, '#e8f0f0');
+    } else if (a.style === 'builder') {
+      rect(ctx, cx - 5, y - 8, 10, 1, shade(shirt, -35));
+      rect(ctx, cx - 1, y - 7, 2, 5, '#d9d0b4');
+    } else if (a.style === 'researcher') {
+      rect(ctx, cx - 2, y - 8, 4, 6, '#f0ead9');
+    }
+
+    // Face: 1-pixel eyes/mouth improve readability without increasing the sprite footprint.
     const look = a.status === 'WAITING' && !d.reducedMotion ? Math.round(Math.sin(t * 0.8)) : 0;
     rect(ctx, cx - 2, y - 13, 4, 3, skin);
     rect(ctx, cx - 5 + look, y - 21 - bob, 10, 9, hair);
     rect(ctx, cx - 4 + look, y - 22 - bob, 8, 1, hair);
-    if (look !== 0) rect(ctx, look > 0 ? cx + 4 + look : cx - 6 + look, y - 17 - bob, 2, 3, skin);
-    // desk chair back in front of a seated agent
+    rect(ctx, cx - 4 + look, y - 13 - bob, 8, 3, skin);
+    rect(ctx, cx - 3 + look, y - 12 - bob, 1, 1, '#20252f');
+    rect(ctx, cx + 2 + look, y - 12 - bob, 1, 1, '#20252f');
+    if (seed % 3 === 0) rect(ctx, cx + 1 + look, y - 10 - bob, 2, 1, shade(skin, -30));
+
+    // Small role-specific headwear/accessories, kept within the same visible scale.
+    if (a.style === 'builder') {
+      rect(ctx, cx - 5 + look, y - 23 - bob, 10, 2, '#303744');
+      rect(ctx, cx - 2 + look, y - 24 - bob, 4, 1, a.color);
+    } else if (a.style === 'reviewer') {
+      rect(ctx, cx - 6 + look, y - 23 - bob, 12, 2, '#202631');
+      rect(ctx, cx - 4 + look, y - 25 - bob, 2, 2, '#4fc1b5');
+      rect(ctx, cx + 2 + look, y - 25 - bob, 2, 2, '#4fc1b5');
+    } else if (a.style === 'researcher') {
+      rect(ctx, cx - 6 + look, y - 23 - bob, 12, 1, '#5a4638');
+    }
+
     rect(ctx, cx - 11, cy + 2, 22, 8, chairC);
     rect(ctx, cx - 11, cy + 2, 22, 2, shade(chairC, 25));
   }
 
   bubble(ctx, (wander ? wx : cx) + 11, (wander ? wy : cy) - 36, a, t, d.reducedMotion);
 }
-
 function walkingCharacter(
   ctx: CanvasRenderingContext2D,
   x: number,
