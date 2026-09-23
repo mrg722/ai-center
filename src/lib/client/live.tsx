@@ -22,6 +22,22 @@ interface LiveState {
   activity: Record<string, ActivityLine[]>;
   flights: Flight[];
   liveEvents: EventView[];
+  /**
+   * Monotonic counters, incremented once per matching event as it arrives.
+   * Views that only need to know "did something in this category change"
+   * (to decide whether to refetch) should read these instead of deriving a
+   * count from `liveEvents.filter(...)`: that array is capped at 80 entries
+   * for display, so a count re-derived from it can plateau or even go
+   * backwards in a long session as old matching events get evicted while
+   * unrelated ones arrive — the exact same total length hides a real change.
+   * A monotonic counter also avoids every consumer re-scanning the array on
+   * every single SSE tick, which otherwise makes typing/clicking feel
+   * laggy once there's real traffic (every event re-renders every view that
+   * reads `useLive()`, including ones with a long list of chat messages to
+   * re-diff).
+   */
+  statusTick: number;
+  gitTick: number;
 }
 
 const Ctx = createContext<LiveState | null>(null);
@@ -44,6 +60,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [activity, setActivity] = useState<Record<string, ActivityLine[]>>({});
   const [flights, setFlights] = useState<Flight[]>([]);
   const [liveEvents, setLiveEvents] = useState<EventView[]>([]);
+  const [statusTick, setStatusTick] = useState(0);
+  const [gitTick, setGitTick] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const snapRef = useRef<Snapshot | null>(null);
   snapRef.current = snap;
@@ -93,6 +111,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       es.addEventListener('event', (m) => {
         const e = JSON.parse((m as MessageEvent).data) as EventView;
         setLiveEvents((prev) => [e, ...prev].slice(0, 80));
+        if (/^(run\.|system\.|approval\.decided)/.test(e.type)) setStatusTick((t) => t + 1);
+        if (e.type.startsWith('git') || e.type.startsWith('github')) setGitTick((t) => t + 1);
         if (e.type === 'message.created') {
           setMessageTick((t) => t + 1);
           setLastMessageEvent(e);
@@ -114,18 +134,18 @@ export function LiveProvider({ children }: { children: ReactNode }) {
           setActivity((prev) => ({ ...prev, [e.agent_id!]: [line, ...(prev[e.agent_id!] ?? [])].slice(0, 30) }));
         }
         if (e.type === 'agent.presence') {
-          setSnap((s) =>
-            s
-              ? {
-                  ...s,
-                  agents: s.agents.map((a) =>
-                    a.id === e.agent_id && a.status !== 'OFFLINE' && a.status !== 'BLOCKED'
-                      ? { ...a, activity: String(e.payload.activity ?? a.activity) }
-                      : a,
-                  ),
-                }
-              : s,
-          );
+          setSnap((s) => {
+            if (!s) return s;
+            const target = s.agents.find((a) => a.id === e.agent_id);
+            if (!target || target.status === 'OFFLINE' || target.status === 'BLOCKED') return s;
+            const next = String(e.payload.activity ?? target.activity);
+            // Presence pings repeat frequently (heartbeats, sweeper ticks) and
+            // often carry the same activity text as last time. Skip the
+            // update (and the context-wide re-render it would trigger for
+            // every view on the page) when nothing actually changed.
+            if (next === target.activity) return s;
+            return { ...s, agents: s.agents.map((a) => (a.id === e.agent_id ? { ...a, activity: next } : a)) };
+          });
         }
       });
     };
@@ -138,8 +158,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   }, [refresh, scheduleRefresh]);
 
   const value = useMemo(
-    () => ({ snap, error, connected, refresh, messageTick, lastMessageEvent, activity, flights, liveEvents }),
-    [snap, error, connected, refresh, messageTick, lastMessageEvent, activity, flights, liveEvents],
+    () => ({ snap, error, connected, refresh, messageTick, lastMessageEvent, activity, flights, liveEvents, statusTick, gitTick }),
+    [snap, error, connected, refresh, messageTick, lastMessageEvent, activity, flights, liveEvents, statusTick, gitTick],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLive } from '@/lib/client/live';
 import { ConversationRoom } from '@/components/ConversationRoom';
 import { ActivityFeed, AgentRoster, ApprovalsPanel, GithubPanel, TaskList } from '@/components/Panels';
@@ -39,6 +39,13 @@ export default function CommandCenter() {
     setTab('room');
   };
 
+  // Stable references so the memoized NVIDIA/Gateway panels below don't
+  // re-render just because this page re-rendered for something unrelated.
+  const selectAgentAndOpenRoom = useCallback((id: string) => {
+    setTarget(id);
+    setTab('room');
+  }, []);
+
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: 'room', label: 'Sala' },
     { id: 'agents', label: 'Agentes' },
@@ -65,15 +72,15 @@ export default function CommandCenter() {
       </div>
 
       <div className="shrink-0 space-y-2 p-2 sm:p-3 pb-0">
-        <NvidiaNimPanel onSelectAgent={(id) => { setTarget(id); setTab('room'); }} />
-        <VercelGatewayPanel onSelectAgent={(id) => { setTarget(id); setTab('room'); }} />
+        <NvidiaNimPanel onSelectAgent={selectAgentAndOpenRoom} />
+        <VercelGatewayPanel onSelectAgent={selectAgentAndOpenRoom} />
       </div>
 
       <div className="grid min-h-0 flex-1 gap-3 p-2 sm:p-3 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_330px]">
         {/* left: agents + tasks */}
         <div className={cx('min-h-0 flex-col gap-3', tab === 'agents' || tab === 'tasks' ? 'flex' : 'hidden', 'lg:flex')}>
           <div className={cx('min-h-0', tab === 'tasks' ? 'hidden lg:flex lg:flex-col' : 'flex flex-col', 'lg:max-h-[48%]')}>
-            <AgentRoster onMessage={(id) => { setTarget(id); setTab('room'); }} selectedTask={taskId} />
+            <AgentRoster onMessage={selectAgentAndOpenRoom} selectedTask={taskId} />
           </div>
           <div className={cx('min-h-0 flex-1 flex-col', tab === 'agents' ? 'hidden lg:flex' : 'flex')}>
             <TaskList selected={taskId} onSelect={selectTask} />
