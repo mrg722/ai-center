@@ -3,14 +3,16 @@ import { getAgentBySlug, agentViews, requireProject } from '@/server/orchestrato
 import { seedPermissions } from '@/server/orchestrator/moderator';
 import { getRuntime } from '@/server/providers/registry';
 import { readApiKey } from '@/server/env';
-import { userActor } from '@/server/auth/session';
+import { userActor, type SessionUser } from '@/server/auth/session';
+import type { Db } from '@/server/db';
+import type { ProjectRow } from '@/server/types';
 import { emit } from '@/server/events/bus';
 import { listNvidiaModels, nvidiaModelAvailable } from '@/server/providers/nvidia';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-async function ensureAgent(db: Parameters<typeof requireProject>[0], project: Awaited<ReturnType<typeof requireProject>>, user: Parameters<typeof userActor>[0]) {
+async function ensureAgent(db: Db, project: ProjectRow, user: SessionUser) {
   let agent = await getAgentBySlug(db, project.id, 'nvidia');
   if (agent) return agent;
 
