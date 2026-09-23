@@ -14,9 +14,14 @@ export const env = {
   get databaseUrl() {
     return read('DATABASE_URL');
   },
-  /** When DATABASE_URL is empty, an embedded Postgres (PGlite) stores data here. */
+  /**
+   * When DATABASE_URL is empty, use embedded Postgres (PGlite).
+   * Vercel's filesystem is not a persistent writable application disk, so
+   * production falls back to memory for smoke-testing instead of attempting
+   * to create .data/pglite. Configure DATABASE_URL for persistent production.
+   */
   get pgliteDir() {
-    return read('PGLITE_DIR') ?? '.data/pglite';
+    return read('PGLITE_DIR') ?? (process.env.NODE_ENV === 'production' ? 'memory' : '.data/pglite');
   },
   get sessionSecret(): string {
     const s = read('SESSION_SECRET');
