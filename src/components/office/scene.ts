@@ -19,7 +19,7 @@ import { drawText, textWidth } from './pixelfont';
 import type { AgentStatus, TaskStatus } from '@/shared/domain';
 import { getOfficeAnimation } from './animationMachine';
 import { getBotMotion, getMovement, shouldWalkForMessage } from './movement';
-import { resolveSpriteProfile, spriteFrame, spriteOffset } from './sprites';
+import { drawOfficeSprite, resolveSpriteProfile, spriteFrame, spriteOffset } from './sprites';
 
 export const WORLD = { w: 832, h: 512 };
 
@@ -129,29 +129,43 @@ const MSG_HEX: Record<string, string> = {
 
 /* ───────────────────────────── layout */
 const SLOT_POS: Point[] = [
-  { x: 40, y: 92 },
-  { x: 216, y: 92 },
-  { x: 392, y: 92 },
-  { x: 40, y: 236 },
-  { x: 216, y: 236 },
-  { x: 392, y: 236 },
-  { x: 216, y: 372 },
-  { x: 392, y: 372 },
+  { x: 106, y: 220 }, // Claude Code
+  { x: 286, y: 220 }, // ChatGPT
+  { x: 466, y: 220 }, // Antigravity
+  { x: 646, y: 220 }, // Vercel AI Gateway
+  { x: 646, y: 82 },  // NVIDIA lab
 ];
 const SLOT_W = 168;
 const SLOT_H = 128;
 
+const PREFERRED_SLOT_BY_SLUG: Record<string, Point> = {
+  claude: SLOT_POS[0],
+  chatgpt: SLOT_POS[1],
+  codex: SLOT_POS[1],
+  antigravity: SLOT_POS[2],
+  gemini: SLOT_POS[2],
+  vercel: SLOT_POS[3],
+  'vercel-ai-gateway': SLOT_POS[3],
+  nvidia: SLOT_POS[4],
+  'nvidia-nim': SLOT_POS[4],
+};
+
 export function computeLayout(agents: OfficeAgent[]): Layout {
   const slots = new Map<string, Slot>();
-  agents.slice(0, SLOT_POS.length).forEach((a, i) => {
-    const p = SLOT_POS[i];
-    slots.set(a.id, { x: p.x, y: p.y, w: SLOT_W, h: SLOT_H, seat: { x: p.x + SLOT_W / 2, y: p.y + 70 } });
+  const used = new Set<string>();
+  agents.slice(0, 8).forEach((a, i) => {
+    const p = PREFERRED_SLOT_BY_SLUG[a.slug] ?? SLOT_POS[i] ?? { x: 106, y: 220 };
+    const key = `${p.x}:${p.y}`;
+    const fallback = used.has(key) ? (SLOT_POS.find((candidate) => !used.has(`${candidate.x}:${candidate.y}`)) ?? p) : p;
+    const finalKey = `${fallback.x}:${fallback.y}`;
+    used.add(finalKey);
+    slots.set(a.id, { x: fallback.x, y: fallback.y, w: SLOT_W, h: SLOT_H, seat: { x: fallback.x + SLOT_W / 2, y: fallback.y + 70 } });
   });
   return {
     slots,
-    moderator: { x: 700, y: 214 },
-    moderatorRect: { x: 612, y: 150, w: 176, h: 120 },
-    server: { x: 790, y: 90 },
+    moderator: { x: 416, y: 150 },
+    moderatorRect: { x: 320, y: 74, w: 192, h: 126 },
+    server: { x: 790, y: 100 },
   };
 }
 
@@ -653,9 +667,6 @@ function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dy
   const profile = resolveSpriteProfile(a.slug, a.color);
   const chairC = shade(a.color.length === 7 ? a.color : '#6b7280', -60);
   const off = a.status === 'OFFLINE';
-  const isVercel = a.slug === 'vercel';
-  const isNvidia = a.slug === 'nvidia';
-  const shirt = profile.logo === 'vercel' ? '#f4f4f5' : profile.logo === 'nvidia' ? '#76b900' : a.color;
 
   const movementEvent = latestWalkEvent(d, a.id);
   const targetId = movementEvent?.to[0];
@@ -678,7 +689,18 @@ function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dy
   }
 
   if (motion?.active) {
-    drawWalkingSprite(ctx, motion.x, motion.y, shirt, profile.skin, profile.hair, a.style, motion.direction, spriteFrame('walking', d.now - movementEvent!.at, d.reducedMotion), seed, profile);
+    drawWalkingSprite(
+      ctx,
+      motion.x,
+      motion.y,
+      profile,
+      a.slug,
+      a.color,
+      a.style,
+      motion.direction,
+      spriteFrame('walking', d.now - movementEvent!.at, d.reducedMotion),
+      d.reducedMotion,
+    );
     bubble(ctx, motion.x + 11, motion.y - 36, a, t, d.reducedMotion);
     return;
   }
@@ -686,66 +708,22 @@ function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dy
   drawChair(ctx, cx, cy, chairC);
   const animation = getOfficeAnimation(a.status, a.style);
   const frame = spriteFrame(animation, t * 1000 + seed * 31, d.reducedMotion);
-  const offset = spriteOffset(frame, 'down');
-  const active = ['WORKING', 'REVIEWING', 'THINKING'].includes(a.status);
-  const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.6 + seed) > 0.6 ? 1 : 0;
-  const y = cy + breathe + offset.y;
-  const armA = active && frame % 2 === 0 ? -1 : 0;
-  const armB = active && frame % 2 === 1 ? -1 : 0;
-
-  rect(ctx, cx - 10, y - 16 + armA, 3, 9, shade(shirt, -20));
-  rect(ctx, cx + 7, y - 16 + armB, 3, 9, shade(shirt, -20));
-  rect(ctx, cx - 10, y - 18 + armA, 3, 2, profile.skin);
-  rect(ctx, cx + 7, y - 18 + armB, 3, 2, profile.skin);
-
-  rect(ctx, cx - 8, y - 10, 16, 12, shirt);
-  rect(ctx, cx - 7, y - 11, 14, 1, shade(shirt, 12));
-  rect(ctx, cx - 1, y - 9, 2, 10, shade(shirt, -25));
-
-  if (isVercel) {
-    const vc = ['#ff4d6d', '#ffb347', '#ffe66d', '#5ee58a', '#62b6ff', '#b388ff'];
-    for (let i = 0; i < vc.length; i++) rect(ctx, cx - 7 + i * 2, y - 9, 2, 8, vc[i]);
-  }
-  if (isNvidia) {
-    rect(ctx, cx - 5, y - 8, 10, 2, '#111318');
-    rect(ctx, cx - 2, y - 6, 4, 3, '#111318');
-  }
-  if (a.style === 'reviewer') {
-    rect(ctx, cx - 6, y - 8, 3, 2, '#e8f0f0');
-    rect(ctx, cx + 3, y - 8, 3, 2, '#e8f0f0');
-  } else if (a.style === 'builder') {
-    rect(ctx, cx - 5, y - 8, 10, 1, shade(shirt, -35));
-    rect(ctx, cx - 1, y - 7, 2, 5, '#d9d0b4');
-  } else if (a.style === 'researcher') {
-    rect(ctx, cx - 2, y - 8, 4, 6, '#f0ead9');
-  }
-
-  rect(ctx, cx - 5 + offset.x, y - 21, 10, 9, profile.hair);
-  rect(ctx, cx - 4 + offset.x, y - 22, 8, 1, profile.hair);
-  rect(ctx, cx - 4 + offset.x, y - 13, 8, 3, profile.skin);
-  rect(ctx, cx - 3 + offset.x, y - 12, 1, 1, '#20252f');
-  rect(ctx, cx + 2 + offset.x, y - 12, 1, 1, '#20252f');
-
-  if (profile.glasses) {
-    rect(ctx, cx - 5 + offset.x, y - 13, 4, 2, '#18202b');
-    rect(ctx, cx + 1 + offset.x, y - 13, 4, 2, '#18202b');
-    rect(ctx, cx - 1 + offset.x, y - 12, 2, 1, '#18202b');
-  }
-  if (a.style === 'builder') {
-    rect(ctx, cx - 5 + offset.x, y - 23, 10, 2, '#303744');
-    rect(ctx, cx - 2 + offset.x, y - 24, 4, 1, a.color);
-  } else if (a.style === 'reviewer') {
-    rect(ctx, cx - 6 + offset.x, y - 23, 12, 2, '#202631');
-    rect(ctx, cx - 4 + offset.x, y - 25, 2, 2, '#4fc1b5');
-    rect(ctx, cx + 2 + offset.x, y - 25, 2, 2, '#4fc1b5');
-  }
-
-  rect(ctx, cx - 11, cy + 2, 22, 8, chairC);
-  rect(ctx, cx - 11, cy + 2, 22, 2, shade(chairC, 25));
+  drawOfficeSprite({
+    ctx,
+    x: cx,
+    y: cy,
+    slug: a.slug,
+    shirt: profile.accent,
+    profile,
+    style: a.style,
+    direction: 'down',
+    frame,
+    active: ['WORKING', 'REVIEWING', 'THINKING'].includes(a.status),
+    walking: false,
+  });
 
   bubble(ctx, cx + 11, cy - 36, a, t, d.reducedMotion);
 }
-
 function drawChair(ctx: CanvasRenderingContext2D, cx: number, cy: number, chairC: string) {
   rect(ctx, cx - 11, cy - 4, 22, 14, chairC);
   rect(ctx, cx - 11, cy + 2, 22, 8, chairC);
@@ -758,61 +736,28 @@ function drawWalkingSprite(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  shirt: string,
-  skin: string,
-  hair: string,
+  profile: ReturnType<typeof resolveSpriteProfile>,
+  slug: string,
+  fallbackAccent: string,
   style: string,
   direction: 'up' | 'down' | 'left' | 'right',
   frame: number,
-  seed: number,
-  profile: ReturnType<typeof resolveSpriteProfile>,
+  reducedMotion: boolean,
 ) {
-  const side = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
-  const stride = frame === 0 ? -1 : frame === 2 ? 1 : 0;
-  const flip = side < 0 ? -1 : 1;
-  rect(ctx, x - 9, y + 10, 18, 3, '#0b0e13');
-
-  rect(ctx, x - 5 + stride * flip, y + 2, 5, 8, shade(shirt, -28));
-  rect(ctx, x + 1 - stride * flip, y + 2, 5, 8, shade(shirt, -35));
-  rect(ctx, x - 6 + stride * flip, y + 9, 6, 2, '#242933');
-  rect(ctx, x - stride * flip, y + 9, 6, 2, '#242933');
-
-  rect(ctx, x - 8, y - 10, 16, 13, shirt);
-  rect(ctx, x - 7, y - 11, 14, 2, shade(shirt, 12));
-  if (style === 'reviewer') rect(ctx, x - 10, y - 7, 3, 8, '#4fc1b5');
-  if (style === 'researcher') rect(ctx, x + 7, y - 7, 3, 8, '#a78bfa');
-
-  rect(ctx, x - 10 - stride * flip, y - 7, 3, 8, shade(shirt, -20));
-  rect(ctx, x + 7 + stride * flip, y - 7, 3, 8, shade(shirt, -20));
-  rect(ctx, x - 10 - stride * flip, y + 1, 3, 2, skin);
-  rect(ctx, x + 7 + stride * flip, y + 1, 3, 2, skin);
-
-  const look = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
-  rect(ctx, x - 5 + look, y - 20, 10, 9, hair);
-  rect(ctx, x - 4 + look, y - 21, 8, 1, hair);
-  rect(ctx, x - 4 + look, y - 13, 8, 3, skin);
-  rect(ctx, x - 3 + look, y - 13, 1, 1, '#20252f');
-  rect(ctx, x + 2 + look, y - 13, 1, 1, '#20252f');
-  if (profile.glasses) {
-    rect(ctx, x - 5 + look, y - 14, 4, 2, '#18202b');
-    rect(ctx, x + 1 + look, y - 14, 4, 2, '#18202b');
-    rect(ctx, x - 1 + look, y - 13, 2, 1, '#18202b');
-  }
-
-  if (profile.logo === 'vercel') {
-    const vc = ['#ff4d6d', '#ffb347', '#ffe66d', '#5ee58a', '#62b6ff', '#b388ff'];
-    for (let i = 0; i < vc.length; i++) rect(ctx, x - 7 + i * 2, y - 9, 2, 8, vc[i]);
-  }
-  if (profile.logo === 'nvidia') {
-    rect(ctx, x - 5, y - 8, 10, 2, '#111318');
-    rect(ctx, x - 2, y - 6, 4, 3, '#111318');
-  }
-  if (style === 'builder') rect(ctx, x - 5, y - 23, 10, 2, '#303744');
-
-  const dirText = direction.toUpperCase();
-  if (seed % 5 === 0 && dirText === 'UP') rect(ctx, x - 3, y - 22, 6, 1, shade(hair, 20));
+  drawOfficeSprite({
+    ctx,
+    x,
+    y,
+    slug,
+    shirt: profile.accent || fallbackAccent,
+    profile,
+    style,
+    direction,
+    frame,
+    active: true,
+    walking: true,
+  });
 }
-
 function drawMascotBot(ctx: CanvasRenderingContext2D, d: DynamicInput) {
   const bot = getBotMotion(d.t, d.reducedMotion);
   const bob = d.reducedMotion ? 0 : Math.round(Math.sin(d.t * 3.2) * 1);
@@ -821,30 +766,32 @@ function drawMascotBot(ctx: CanvasRenderingContext2D, d: DynamicInput) {
   const walking = bot.animation === 'walking';
   const leg = walking ? (Math.floor(d.t * 8) % 2 === 0 ? -1 : 1) : 0;
 
-  ctx.globalAlpha = 0.65;
-  rect(ctx, x - 7, y + 8, 14, 2, '#0a0d12');
+  ctx.globalAlpha = 0.55;
+  rect(ctx, x - 10, y + 9, 20, 3, '#0a0d12');
   ctx.globalAlpha = 1;
 
-  rect(ctx, x - 7, y - 8, 14, 12, '#27313c');
-  rect(ctx, x - 5, y - 6, 10, 7, '#101820');
-  rect(ctx, x - 3, y - 4, 2, 2, '#5ee5d1');
-  rect(ctx, x + 2, y - 4, 2, 2, '#5ee5d1');
-  rect(ctx, x - 2, y + 4, 4, 5, '#3d4b5a');
-  rect(ctx, x - 5 + leg, y + 9, 3, 3, '#1b232c');
-  rect(ctx, x + 2 - leg, y + 9, 3, 3, '#1b232c');
-  rect(ctx, x - 9, y - 5, 2, 6, '#5ee5d1');
-  rect(ctx, x + 7, y - 5, 2, 6, '#5ee5d1');
-  rect(ctx, x - 1, y - 11, 2, 3, '#5ee5d1');
+  // Pixel-dog mascot: orange ears/back, white face/body, expressive tail.
+  rect(ctx, x - 8, y - 7, 16, 12, '#f4f1e8');
+  rect(ctx, x - 6, y - 11, 12, 7, '#f4f1e8');
+  rect(ctx, x - 9, y - 10, 4, 7, '#e8792e');
+  rect(ctx, x + 5, y - 10, 4, 7, '#e8792e');
+  rect(ctx, x - 7, y - 9, 5, 4, '#e8792e');
+  rect(ctx, x + 2, y - 5, 2, 2, '#22252b');
+  rect(ctx, x - 4, y - 5, 2, 2, '#22252b');
+  rect(ctx, x - 2, y - 1, 4, 2, '#22252b');
+  rect(ctx, x - 9, y + 2, 4, 4, '#e8792e');
+  rect(ctx, x + 6, y + 1, 4, 3, '#e8792e');
+  rect(ctx, x - 7 + leg, y + 5, 4, 5, '#f4f1e8');
+  rect(ctx, x + 3 - leg, y + 5, 4, 5, '#f4f1e8');
+  rect(ctx, x + 9, y - 3, 5, 2, '#e8792e');
+  rect(ctx, x + 12, y - 5, 3, 3, '#e8792e');
 
   if (bot.animation === 'observing') {
-    rect(ctx, x + 9, y - 13, 15, 9, '#e9edf2');
-    rect(ctx, x + 11, y - 11, 2, 2, '#8b97a8');
-    rect(ctx, x + 15, y - 11, 2, 2, '#8b97a8');
-    rect(ctx, x + 19, y - 11, 2, 2, '#8b97a8');
+    rect(ctx, x + 13, y - 16, 24, 10, '#e9edf2');
+    drawText(ctx, 'bot', x + 16, y - 13, '#3c4655');
   }
-  drawText(ctx, 'BOT', x - 8, y + 15, '#5ee5d1');
+  drawText(ctx, 'BOT', x - 8, y + 15, '#e8792e');
 }
-
 function bubble(ctx: CanvasRenderingContext2D, x: number, y: number, a: OfficeAgent, t: number, reduced: boolean) {
   const st = a.status; // orchestrator's AgentState, verbatim
   if (st === 'ONLINE' || st === 'WORKING') return;
