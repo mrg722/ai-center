@@ -77,11 +77,12 @@ export interface OfficeSpriteOptions {
  * glasses/desk lead. The state machine still decides only pose/animation.
  */
 export function drawOfficeSprite(options: OfficeSpriteOptions): void {
-  const { ctx, x, y, profile, frame, active, walking } = options;
+  const { ctx, x, y, profile, frame, active, walking, direction } = options;
   const kind = profile.kind ?? 'codex';
   const bob = walking ? 0 : frame === 2 ? -1 : 0;
-  const px = x;
-  const py = y + bob;
+  const offset = walking ? spriteOffset(frame, direction) : { x: 0, y: 0 };
+  const px = x + offset.x;
+  const py = y + bob + offset.y;
 
   if (kind === 'claude') return drawClaude(ctx, px, py, profile, active, frame);
   if (kind === 'chatgpt') return drawChatGpt(ctx, px, py, profile, active, frame);

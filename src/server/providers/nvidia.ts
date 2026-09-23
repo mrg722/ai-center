@@ -48,7 +48,41 @@ export async function listNvidiaModels(): Promise<NvidiaModel[]> {
   return models;
 }
 
+const PREFERRED_MODELS = [
+  'nvidia/nemotron-3-super-120b-a12b',
+  'nvidia/nemotron-3-ultra-550b-a55b',
+  'meta/llama-3.3-70b-instruct',
+  'openai/gpt-oss-120b',
+  'qwen/qwen3-next-80b-a3b-instruct',
+];
+
+export function invalidateNvidiaModelsCache(): void {
+  globalCache.__accNvidiaModels = undefined;
+}
+
 export async function nvidiaModelAvailable(model: string): Promise<boolean> {
   if (!model) return false;
   return (await listNvidiaModels()).some((m) => m.id === model);
+}
+
+export async function resolveNvidiaModel(
+  requested: string,
+  excludedModels: readonly string[] = [],
+): Promise<{ model: string; repaired: boolean }> {
+  const models = await listNvidiaModels();
+  if (!models.length) throw new Error('NVIDIA API returned no models for this account');
+
+  const excluded = new Set(excludedModels);
+  const available = new Set(models.map((m) => m.id));
+  if (requested && available.has(requested) && !excluded.has(requested)) return { model: requested, repaired: false };
+
+  const fallback =
+    PREFERRED_MODELS.find((id) => available.has(id) && !excluded.has(id)) ??
+    models.find((m) => !excluded.has(m.id) && /chat|instruct|reason|llm/i.test(m.id))?.id;
+
+  if (!fallback) {
+    throw new Error('NVIDIA API returned no alternative chat-capable model for this account');
+  }
+
+  return { model: fallback, repaired: Boolean(requested && requested !== fallback) };
 }

@@ -11,6 +11,7 @@ type Payload = {
     total: number;
     providers: string[];
     agent: { id: string; model: string } | null;
+    model_repair?: { from: string; to: string };
     error?: string;
   };
 };
@@ -27,13 +28,22 @@ export const NvidiaNimPanel = memo(function NvidiaNimPanel({ onSelectAgent }: { 
   const [selected, setSelected] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [lastRepair, setLastRepair] = useState<{ from: string; to: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
       const x = await api<Payload>('/api/providers');
       setData(x);
-      setSelected((current) => current || x.nvidia.agent?.model || x.nvidia.models[0]?.id || '');
-      setMsg(x.nvidia.error ?? '');
+      setSelected((current) => {
+        const currentIsValid = current && x.nvidia.models.some((m) => m.id === current);
+        return currentIsValid ? current : x.nvidia.agent?.model || x.nvidia.models[0]?.id || '';
+      });
+      if (x.nvidia.model_repair) {
+        setLastRepair(x.nvidia.model_repair);
+        setMsg(`Modelo NVIDIA corregido: ${x.nvidia.model_repair.from} → ${x.nvidia.model_repair.to}`);
+      } else if (x.nvidia.error) {
+        setMsg(x.nvidia.error);
+      }
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'No se pudo cargar NVIDIA NIM');
     }
@@ -64,6 +74,7 @@ export const NvidiaNimPanel = memo(function NvidiaNimPanel({ onSelectAgent }: { 
         body: { op: 'set_model', model: model.id },
       });
       setSelected(model.id);
+      setLastRepair(null);
       setData((d) => (d ? { ...d, nvidia: { ...d.nvidia, agent: { id: agentId, model: model.id } } } : d));
       onSelectAgent?.(agentId);
       setMsg('Modelo NVIDIA activo: ' + model.id);
@@ -106,6 +117,15 @@ export const NvidiaNimPanel = memo(function NvidiaNimPanel({ onSelectAgent }: { 
             Actualizar
           </button>
         </div>
+
+        {lastRepair && (
+          <div className="rounded-md border border-st-warn/40 bg-st-warn/10 p-2 text-[11px] text-st-warn" role="alert">
+            <strong>⚠ Modelo NVIDIA actualizado.</strong>{' '}
+            El modelo seleccionado anteriormente ya no está disponible. Se cambió automáticamente de{' '}
+            <span className="font-mono">{lastRepair.from}</span> a{' '}
+            <span className="font-mono">{lastRepair.to}</span>. Revisa el catálogo y selecciona otro modelo si lo prefieres.
+          </div>
+        )}
 
         {data?.nvidia.configured && (
           <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-4">

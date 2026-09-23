@@ -692,7 +692,13 @@ function screen(ctx: CanvasRenderingContext2D, sc: { x: number; y: number; w: nu
 function latestWalkEvent(d: DynamicInput, from: string): OfficeFlight | null {
   let best: OfficeFlight | null = null;
   for (const flight of d.flights) {
-    if (flight.from !== from || !shouldWalkForMessage(flight.type)) continue;
+    if (
+      !flight ||
+      flight.from !== from ||
+      !Array.isArray(flight.to) ||
+      flight.to.length === 0 ||
+      !shouldWalkForMessage(flight.type)
+    ) continue;
     if (d.now < flight.at || d.now - flight.at > 2300) continue;
     if (!best || flight.at > best.at) best = flight;
   }
@@ -960,22 +966,28 @@ function moderatorDesk(ctx: CanvasRenderingContext2D, layout: Layout, d: Dynamic
   }
 }
 
-function pointOf(layout: Layout, id: string): Point {
+export function pointOf(layout: Layout, id: string): Point | null {
   if (id === 'moderator') return { x: layout.moderator.x, y: layout.moderatorRect.y + 50 };
   if (id === 'system') return layout.server;
   const s = layout.slots.get(id);
-  return s ? { x: s.x + s.w / 2, y: s.y + 50 } : layout.server;
+  return s ? { x: s.x + s.w / 2, y: s.y + 50 } : null;
 }
 
 function flights(ctx: CanvasRenderingContext2D, d: DynamicInput) {
   const DUR = 1400;
   for (const f of d.flights) {
+    if (!f || !Array.isArray(f.to) || f.to.length === 0) continue;
     const age = d.now - f.at;
     if (age < 0 || age > DUR + 700) continue;
+
+    // Realtime events can outlive a layout entry. Never invent a destination.
     const a = pointOf(d.layout, f.from);
+    if (!a) continue;
+
     const color = MSG_HEX[f.type] ?? '#dbe2ec';
     for (const to of f.to) {
       const b = pointOf(d.layout, to);
+      if (!b) continue;
       if (age <= DUR) {
         const p = age / DUR;
         const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;

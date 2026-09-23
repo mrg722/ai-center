@@ -38,6 +38,15 @@ test.afterAll(() => {
   bridge?.kill('SIGTERM');
 });
 
+test.beforeEach(() => {
+  consoleErrors.length = 0;
+});
+
+test.afterEach(() => {
+  const real = consoleErrors.filter((e) => !/401|Failed to load resource/.test(e));
+  expect(real, real.join('\n')).toEqual([]);
+});
+
 test.describe.serial('AI Command Center', () => {
   test('first-run setup creates the moderator and the team', async ({ page }) => {
     watchConsole(page);
@@ -185,11 +194,6 @@ test.describe.serial('AI Command Center', () => {
     for (const k of ['SESSION_SECRET', 'e2e-session-secret', 'GITHUB_TOKEN', 'API_KEY=']) expect(html).not.toContain(k);
     // resume in case the evaluate above halted the system
     await page.evaluate(() => fetch('/api/system', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"op":"resume_all"}' }));
-  });
-
-  test('no browser console errors across the session', async () => {
-    const real = consoleErrors.filter((e) => !/401|Failed to load resource/.test(e));
-    expect(real, real.join('\n')).toEqual([]);
   });
 });
 
