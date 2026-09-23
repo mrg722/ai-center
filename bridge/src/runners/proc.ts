@@ -2,7 +2,7 @@ import { spawn, execFile } from 'node:child_process';
 
 const SECRET_ENV_NAME = /(?:API[_-]?KEY|ACCESS[_-]?KEY|AUTH(?:ORIZATION)?|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE[_-]?KEY|DATABASE_URL)/i;
 
-function sanitizedChildEnv(extra?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+export function sanitizedChildEnv(extra?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const out: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (!SECRET_ENV_NAME.test(key)) out[key] = value;
