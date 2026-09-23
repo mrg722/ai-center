@@ -27,6 +27,8 @@ Todas son **solo de servidor**. Ninguna usa el prefijo `NEXT_PUBLIC_`, así que 
 
 ## Runtimes por API (solo los que uses)
 
+`AI_GATEWAY_API_KEY` habilita el runtime **Vercel AI Gateway**. El agente puede usar cualquier modelo del catálogo de Gateway indicando su identificador `creator/model` (por ejemplo `openai/gpt-5.6-luna`). `VERCEL_AI_GATEWAY_MODEL` puede definir el modelo por defecto. Gateway es de pago según el uso del modelo; el presupuesto diario del proyecto sigue aplicándose antes de cada llamada.
+
 | Variable | Runtime | Modelo por defecto (`*_MODEL`) |
 |---|---|---|
 | `GEMINI_API_KEY` | Gemini | `GEMINI_MODEL` (por defecto `gemini-3.8-flash`) |
@@ -37,6 +39,7 @@ Todas son **solo de servidor**. Ninguna usa el prefijo `NEXT_PUBLIC_`, así que 
 | `DEEPSEEK_API_KEY` | DeepSeek | `DEEPSEEK_MODEL` (`deepseek-chat`) |
 | `MISTRAL_API_KEY` | Mistral | `MISTRAL_MODEL` |
 | `DASHSCOPE_API_KEY` | Qwen (DashScope) | `QWEN_MODEL` |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway | `VERCEL_AI_GATEWAY_MODEL` (`openai/gpt-5.6-luna`) |
 | — | Ollama / LM Studio | `OLLAMA_MODEL` / `LMSTUDIO_MODEL` (sin clave) |
 
 Un agente puede usar otra variable (campo *Variable de entorno con la API key*), pero **solo** si su nombre termina en `_API_KEY` o `_TOKEN` y no es `GITHUB_TOKEN`/`SETUP_TOKEN`: así un agente mal configurado no puede enviar `SESSION_SECRET` o `DATABASE_URL` a una URL arbitraria.
