@@ -137,7 +137,7 @@ const TRUSTED_ORIGINS: Record<string, string[]> = {
   deepseek: ['https://api.deepseek.com'],
   mistral: ['https://api.mistral.ai'],
   qwen: ['https://dashscope-intl.aliyuncs.com'],
-  'vercel-ai-gateway': ['https://ai-gateway.vercel.sh'],
+  'vercel-ai-gateway': ['https://ai-gateway.vercel.sh'],\n  'nvidia-nim': ['https://integrate.api.nvidia.com'],
 };
 
 function trustedBaseUrl(p: Runtime, raw: string | undefined): { url: string; ok: boolean; reason?: string } {
