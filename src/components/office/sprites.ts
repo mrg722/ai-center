@@ -85,7 +85,7 @@ export interface OfficeSpriteOptions {
  * glasses/desk lead. The state machine still decides only pose/animation.
  */
 export function drawOfficeSprite(options: OfficeSpriteOptions): void {
-  const { ctx, x, y, profile, direction, frame, active, walking } = options;
+  const { ctx, x, y, profile, frame, active, walking } = options;
   const kind = profile.kind ?? 'codex';
   const bob = walking ? 0 : frame === 2 ? -1 : 0;
   const px = x;
