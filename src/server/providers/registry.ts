@@ -15,7 +15,6 @@ import {
   openrouterProvider,
   perplexityProvider,
   qwenProvider,
-  nvidiaProvider,
   vercelAiGatewayProvider,
 } from './adapters';
 import { env, readApiKey } from '../env';
