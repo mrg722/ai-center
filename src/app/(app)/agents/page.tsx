@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLive } from '@/lib/client/live';
 import { api } from '@/lib/client/api';
-import type { AgentView, RuntimeInfo } from '@/lib/client/types';
+import type { AgentView, NvidiaCatalog, RuntimeInfo } from '@/lib/client/types';
 import { PERMISSION_ACTIONS, type PermissionAction } from '@/shared/domain';
 import { AgentAvatar, Button, cx, Empty, Field, inputCls, Modal, Panel, StatusBadge, timeAgo } from '@/components/ui';
 
@@ -21,16 +21,41 @@ const PERM_LABEL: Record<PermissionAction, string> = {
   paid_api: 'API de pago',
 };
 
+// Comfortable, predictable reading order: the builder first, then the
+// auditor, then research/second-opinion roles, everything else after —
+// matches the order the roles are introduced in AGENTS.md.
+const ROLE_ORDER: Record<string, number> = {
+  PRIMARY_BUILDER: 0,
+  AUDITOR_INTEGRATOR: 1,
+  RESEARCHER: 2,
+  GENERIC: 3,
+};
+function sortAgents(agents: AgentView[]): AgentView[] {
+  return [...agents].sort((a, b) => {
+    const ra = ROLE_ORDER[a.role] ?? 4;
+    const rb = ROLE_ORDER[b.role] ?? 4;
+    return ra !== rb ? ra - rb : a.name.localeCompare(b.name);
+  });
+}
+
 export default function AgentsPage() {
   const { snap } = useLive();
   const [providers, setProviders] = useState<RuntimeInfo[]>([]);
+  const [nvidia, setNvidia] = useState<NvidiaCatalog | null>(null);
   const [token, setToken] = useState<{ agent: AgentView; token: string } | null>(null);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<AgentView | null>(null);
 
   useEffect(() => {
-    api<{ runtimes: RuntimeInfo[] }>('/api/providers').then((r) => setProviders(r.runtimes)).catch(() => undefined);
+    api<{ runtimes: RuntimeInfo[]; nvidia: NvidiaCatalog }>('/api/providers')
+      .then((r) => {
+        setProviders(r.runtimes);
+        setNvidia(r.nvidia);
+      })
+      .catch(() => undefined);
   }, []);
+
+  const orderedAgents = useMemo(() => (snap ? sortAgents(snap.agents) : []), [snap]);
 
   if (!snap) return <Empty>Cargando…</Empty>;
 
@@ -55,7 +80,7 @@ export default function AgentsPage() {
         </Button>
       </div>
 
-      {snap.agents.map((a) => (
+      {orderedAgents.map((a) => (
         <Panel
           key={a.id}
           title={
@@ -124,6 +149,9 @@ export default function AgentsPage() {
                   )}
                 </div>
               )}
+              {a.runtime === 'nvidia-nim' && (
+                <NvidiaModelPicker agent={a} catalog={nvidia} onSelect={(model) => control(a, { op: 'set_model', model })} />
+              )}
             </div>
             <PermissionMatrix agent={a} onChange={(body) => control(a, body)} />
           </div>
@@ -183,6 +211,73 @@ function PermissionMatrix({ agent, onChange }: { agent: AgentView; onChange: (bo
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/** Search box + picklist over the live NVIDIA NIM catalogue (GET /api/providers). No typing model ids by hand. */
+function NvidiaModelPicker({ agent, catalog, onSelect }: { agent: AgentView; catalog: NvidiaCatalog | null; onSelect: (model: string) => void }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+
+  if (!catalog) return null;
+  if (!catalog.configured) {
+    return <p className="mt-1 text-[11px] text-fg-dim">Configura NVIDIA_API_KEY en el servidor para ver el catálogo de modelos.</p>;
+  }
+  if (catalog.error) {
+    return <p className="mt-1 text-[11px] text-st-error">Catálogo NVIDIA no disponible: {catalog.error}</p>;
+  }
+
+  const needle = q.trim().toLowerCase();
+  const filtered = needle ? catalog.models.filter((m) => m.id.toLowerCase().includes(needle)) : catalog.models;
+
+  if (!open) {
+    return (
+      <div className="pt-1">
+        <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
+          Elegir modelo del catálogo ({catalog.total})
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1 space-y-1.5 rounded-md border border-line bg-ink-850 p-2">
+      <div className="flex items-center gap-2">
+        <input
+          className={cx(inputCls, 'h-7 text-[11px]')}
+          placeholder={`Buscar entre ${catalog.total} modelos NVIDIA…`}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          autoFocus
+        />
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          cerrar
+        </Button>
+      </div>
+      <div className="max-h-44 space-y-0.5 overflow-y-auto">
+        {filtered.length === 0 && <p className="px-1 py-2 text-[11px] text-fg-dim">Sin coincidencias.</p>}
+        {filtered.slice(0, 60).map((m) => (
+          <button
+            key={m.id}
+            onClick={() => {
+              onSelect(m.id);
+              setOpen(false);
+              setQ('');
+            }}
+            className={cx(
+              'block w-full truncate rounded px-1.5 py-1 text-left font-mono text-[11px] hover:bg-ink-800',
+              m.id === agent.model ? 'bg-accent/10 text-accent' : 'text-fg-muted',
+            )}
+            title={m.id}
+          >
+            {m.id === agent.model ? '✓ ' : ''}
+            {m.id}
+            {m.owned_by ? <span className="text-fg-dim"> · {m.owned_by}</span> : null}
+          </button>
+        ))}
+        {filtered.length > 60 && <p className="px-1 py-1 text-[10px] text-fg-dim">y {filtered.length - 60} más — sigue escribiendo para acotar.</p>}
       </div>
     </div>
   );

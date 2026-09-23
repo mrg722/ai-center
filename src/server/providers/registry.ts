@@ -175,7 +175,8 @@ function trustedBaseUrl(p: Runtime, raw: string | undefined): { url: string; ok:
     if (!allowedHosts.includes(url.hostname.toLowerCase())) {
       return { url: raw, ok: false, reason: 'custom endpoint host is not in ACC_ALLOWED_CUSTOM_HOSTS' };
     }
-    if (url.protocol !== 'https:') return { url: raw, ok: false, reason: 'custom endpoints must use HTTPS' };
+    if (env.isProduction && url.protocol !== 'https:') return { url: raw, ok: false, reason: 'custom endpoints must use HTTPS' };
+    if (!/^https?:$/.test(url.protocol)) return { url: raw, ok: false, reason: 'custom endpoints must use HTTP or HTTPS' };
     return { url: raw, ok: true };
   }
 
