@@ -1,4 +1,5 @@
 import { userRoute, HttpError, readJson } from '@/server/http/route';
+import type { NextRequest } from 'next/server';
 import { getAgentBySlug, agentViews, requireProject } from '@/server/orchestrator/repo';
 import { seedPermissions } from '@/server/orchestrator/moderator';
 import { getRuntime } from '@/server/providers/registry';
@@ -58,7 +59,7 @@ async function ensureNvidiaAgent(db: Db, project: ProjectRow, user: SessionUser)
   return getAgentBySlug(db, project.id, 'nvidia');
 }
 
-export const GET = userRoute(async ({ db, user }) => {
+const getNvidia = userRoute(async ({ db, user }) => {
   const project = await requireProject(db);
   const agent = await ensureNvidiaAgent(db, project, user);
   const configured = Boolean(readApiKey('NVIDIA_API_KEY'));
@@ -95,7 +96,7 @@ export const GET = userRoute(async ({ db, user }) => {
   }
 });
 
-export const POST = userRoute(async ({ req, db, user }) => {
+const postNvidia = userRoute(async ({ req, db, user }) => {
   const project = await requireProject(db);
   const body = await readJson(req, z.object({ model: z.string().trim().min(1).max(200) }));
 
@@ -131,3 +132,14 @@ export const POST = userRoute(async ({ req, db, user }) => {
   if (!updated) throw new HttpError(500, 'agente NVIDIA no disponible');
   return { ok: true, agent: updated };
 });
+
+
+type NvidiaRouteContext = { params: Promise<Record<string, string>> };
+
+export async function GET(req: NextRequest, ctx: NvidiaRouteContext) {
+  return getNvidia(req, ctx);
+}
+
+export async function POST(req: NextRequest, ctx: NvidiaRouteContext) {
+  return postNvidia(req, ctx);
+}
