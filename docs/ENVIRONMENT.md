@@ -43,7 +43,7 @@ Todas son **solo de servidor**. Ninguna usa el prefijo `NEXT_PUBLIC_`, así que 
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway | `VERCEL_AI_GATEWAY_MODEL` (`openai/gpt-5.6-luna`) |
 | — | Ollama / LM Studio | `OLLAMA_MODEL` / `LMSTUDIO_MODEL` (sin clave) |
 
-Los runtimes integrados ya no pueden elegir otra variable de secreto desde la base de datos: cada proveedor usa exclusivamente su propia variable (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.). Los hosts de proveedores integrados están fijados a una lista de orígenes HTTPS confiables. Los runtimes HTTP/MCP personalizados no reciben ninguna API key del servidor y solo funcionan contra hosts HTTPS explícitamente incluidos en `ACC_ALLOWED_CUSTOM_HOSTS`.
+NVIDIA NIM usa `https://integrate.api.nvidia.com/v1` y el endpoint OpenAI-compatible; su catálogo/modelos disponibles pueden cambiar sin cambios en el núcleo de ACC.\n\nLos runtimes integrados ya no pueden elegir otra variable de secreto desde la base de datos: cada proveedor usa exclusivamente su propia variable (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.). Los hosts de proveedores integrados están fijados a una lista de orígenes HTTPS confiables. Los runtimes HTTP/MCP personalizados no reciben ninguna API key del servidor y solo funcionan contra hosts HTTPS explícitamente incluidos en `ACC_ALLOWED_CUSTOM_HOSTS`.
 
 ## En tu máquina (Agent Bridge)
 
