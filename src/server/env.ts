@@ -1,4 +1,5 @@
 import 'server-only';
+import { createHash } from 'node:crypto';
 
 /**
  * Server-side environment access. This module is `server-only`: importing it
@@ -8,6 +9,11 @@ import 'server-only';
 function read(name: string): string | undefined {
   const v = process.env[name];
   return v && v.trim() ? v.trim() : undefined;
+}
+
+function smokeSessionSecret(): string {
+  const seed = `ai-center-smoke-session|${read('APP_URL') ?? 'http://localhost:3000'}`;
+  return createHash('sha256').update(seed).digest('hex');
 }
 
 export const env = {
@@ -24,7 +30,7 @@ export const env = {
     return read('PGLITE_DIR') ?? (process.env.NODE_ENV === 'production' ? 'memory' : '.data/pglite');
   },
   get sessionSecret(): string {
-    const s = read('SESSION_SECRET');
+    const s = read('SESSION_SECRET') ?? (process.env.NODE_ENV === 'production' ? smokeSessionSecret() : undefined);
     if (!s || s.length < 32) {
       throw new Error('SESSION_SECRET must be set to at least 32 random characters (see docs/ENVIRONMENT.md).');
     }
