@@ -4,7 +4,7 @@ import type { InboxItem } from '../../shared/protocol';
 import { emit, emitEphemeral } from '../events/bus';
 import { getRuntime, httpReadiness, resolveHttpConfig, resolveModel } from '../providers/registry';
 import { invalidateNvidiaModelsCache, resolveNvidiaModel } from '../providers/nvidia';
-import { isHttpRuntime, ProviderError } from '../providers/types';
+import { isHttpRuntime, ProviderError, type GenerateResult } from '../providers/types';
 import { parseAgentReply } from './action-parser';
 import { validateAgentAction } from '../validation';
 import { executeAgentAction, agentActor, authorize } from './actions';
@@ -226,7 +226,7 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
           resolveHttpConfig(runtime, agent.config),
         );
 
-      let out;
+      let out: GenerateResult;
       try {
         out = await request();
       } catch (e) {
