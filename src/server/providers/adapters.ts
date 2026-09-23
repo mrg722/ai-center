@@ -219,6 +219,25 @@ export const geminiProvider: HttpRuntime = {
   },
 };
 
+/* ───────────────────────────── Vercel AI Gateway */
+/**
+ * Vercel AI Gateway exposes a single OpenAI-compatible endpoint for a large
+ * catalogue of models. The model field is intentionally not constrained here:
+ * ACC can call any current Gateway model without a code change.
+ */
+export const vercelAiGatewayProvider = openAICompatible({
+  id: 'vercel-ai-gateway',
+  label: 'Vercel AI Gateway',
+  provider: { id: 'vercel', name: 'Vercel AI Gateway' },
+  paid: true,
+  description: 'Hundreds of models through one Gateway key. Set the model to any Vercel AI Gateway model slug (creator/model).',
+  apiKeyEnv: 'AI_GATEWAY_API_KEY',
+  defaultBaseUrl: 'https://ai-gateway.vercel.sh/v1',
+  modelEnv: 'VERCEL_AI_GATEWAY_MODEL',
+  defaultModel: 'openai/gpt-5.6-luna',
+  capabilities: ['analysis', 'code.review', 'research', 'multi-model'],
+});
+
 /* ───────────────────────────── Generic HTTP agent */
 /**
  * Contract: POST <base_url> with {system, prompt, model} (+ Bearer key if
