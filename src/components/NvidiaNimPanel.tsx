@@ -11,6 +11,7 @@ type Payload = {
     total: number;
     providers: string[];
     agent: { id: string; model: string } | null;
+    model_repair?: { from: string; to: string };
     error?: string;
   };
 };
@@ -32,8 +33,15 @@ export const NvidiaNimPanel = memo(function NvidiaNimPanel({ onSelectAgent }: { 
     try {
       const x = await api<Payload>('/api/providers');
       setData(x);
-      setSelected((current) => current || x.nvidia.agent?.model || x.nvidia.models[0]?.id || '');
-      setMsg(x.nvidia.error ?? '');
+      setSelected((current) => {
+        const currentIsValid = current && x.nvidia.models.some((m) => m.id === current);
+        return currentIsValid ? current : x.nvidia.agent?.model || x.nvidia.models[0]?.id || '';
+      });
+      setMsg(
+        x.nvidia.model_repair
+          ? `Modelo NVIDIA corregido: ${x.nvidia.model_repair.from} → ${x.nvidia.model_repair.to}`
+          : (x.nvidia.error ?? ''),
+      );
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'No se pudo cargar NVIDIA NIM');
     }
