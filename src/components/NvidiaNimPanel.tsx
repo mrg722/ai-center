@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/client/api';
 import type { AgentView } from '@/lib/client/types';
 
@@ -16,7 +16,7 @@ export function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string)
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const x = await api<Payload>('/api/nvidia');
       setData(x);
@@ -119,6 +119,6 @@ export function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string)
   );
 }
 
-function Badge({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'green' | 'amber' }) {
+function Badge({ children, tone = 'default' }: { children: ReactNode; tone?: 'default' | 'green' | 'amber' }) {
   return <span className={'rounded border px-1.5 py-0.5 ' + (tone === 'green' ? 'border-st-online/30 text-st-online' : tone === 'amber' ? 'border-st-warn/30 text-st-warn' : 'border-line text-fg-dim')}>{children}</span>;
 }
