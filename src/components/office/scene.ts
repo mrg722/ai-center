@@ -19,7 +19,7 @@ import { drawText, textWidth } from './pixelfont';
 import type { AgentStatus, TaskStatus } from '@/shared/domain';
 import { getOfficeAnimation } from './animationMachine';
 import { getBotMotion, getMovement, shouldWalkForMessage } from './movement';
-import { drawOfficeSprite, resolveSpriteProfile, spriteFrame, spriteOffset } from './sprites';
+import { drawOfficeSprite, resolveSpriteProfile, spriteFrame } from './sprites';
 
 export const WORLD = { w: 832, h: 512 };
 
