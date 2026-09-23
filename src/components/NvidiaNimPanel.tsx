@@ -1,11 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/client/api';
 import type { AgentView } from '@/lib/client/types';
 
 type Model = { id: string; object?: string; created?: number; owned_by?: string };
-type Payload = { configured: boolean; models: Model[]; total: number; providers: string[]; agent: AgentView | null; error?: string };
+type Payload = {
+  nvidia: {
+    configured: boolean;
+    models: Model[];
+    total: number;
+    providers: string[];
+    agent: { id: string; model: string } | null;
+    error?: string;
+  };
+};
 
 const GREEN = '#76b900';
 
@@ -16,37 +25,44 @@ export function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string)
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
-      const x = await api<Payload>('/api/nvidia');
+      const x = await api<Payload>('/api/providers');
       setData(x);
-      setSelected((current) => current || x.agent?.model || x.models[0]?.id || '');
-      setMsg(x.error ?? '');
+      setSelected((current) => current || x.nvidia.agent?.model || x.nvidia.models[0]?.id || '');
+      setMsg(x.nvidia.error ?? '');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'No se pudo cargar NVIDIA NIM');
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
     const timer = window.setInterval(() => void load(), 60_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [load]);
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return data?.models ?? [];
-    return (data?.models ?? []).filter((m) => [m.id, m.owned_by ?? ''].join(' ').toLowerCase().includes(needle));
+    if (!needle) return data?.nvidia.models ?? [];
+    return (data?.nvidia.models ?? []).filter((m) =>
+      [m.id, m.owned_by ?? ''].join(' ').toLowerCase().includes(needle),
+    );
   }, [data, q]);
 
   async function choose(model: Model) {
+    const agentId = data?.nvidia.agent?.id;
+    if (!agentId) return;
     setBusy(true);
     setMsg('');
-    setSelected(model.id);
     try {
-      const x = await api<{ agent: AgentView }>('/api/nvidia', { method: 'POST', body: { model: model.id } });
-      setData((d) => (d ? { ...d, agent: x.agent } : d));
-      onSelectAgent?.(x.agent.id);
+      await api<{ ok: boolean; model: string }>(`/api/agents/${agentId}/control`, {
+        method: 'POST',
+        body: { op: 'set_model', model: model.id },
+      });
+      setSelected(model.id);
+      setData((d) => (d ? { ...d, nvidia: { ...d.nvidia, agent: { id: agentId, model: model.id } } } : d));
+      onSelectAgent?.(agentId);
       setMsg('Modelo NVIDIA activo: ' + model.id);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'No se pudo seleccionar el modelo');
@@ -64,13 +80,15 @@ export function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string)
             <span className="grid h-7 w-7 place-items-center rounded bg-[#76b900] text-[10px] font-black text-black">N</span>
             <div>
               <h2 className="text-sm font-semibold">NVIDIA NIM</h2>
-              <p className="text-[11px] text-fg-dim">Un solo agente · catálogo dinámico · cambio de modelo sin crear agentes</p>
+              <p className="text-[11px] text-fg-dim">Un agente · catálogo dinámico · cambio de modelo sin crear agentes</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-1 text-[10px] font-mono">
-            <Badge>{data ? data.nvidia.total + ' modelos' : 'cargando…'}</Badge>
-            <Badge>{data ? data.nvidia.providers.length + ' proveedores' : '—'}</Badge>
-            <Badge tone={data?.configured ? 'green' : 'amber'}>{data?.configured ? 'NVIDIA_API_KEY ✓' : 'Falta NVIDIA_API_KEY'}</Badge>
+          <div className="flex flex-wrap gap-1 font-mono text-[10px]">
+            <Badge>{data ? `${data.nvidia.total} modelos` : 'cargando…'}</Badge>
+            <Badge>{data ? `${data.nvidia.providers.length} proveedores` : '—'}</Badge>
+            <Badge tone={data?.nvidia.configured ? 'green' : 'amber'}>
+              {data?.nvidia.configured ? 'NVIDIA_API_KEY ✓' : 'Falta NVIDIA_API_KEY'}
+            </Badge>
           </div>
         </div>
 
@@ -86,7 +104,7 @@ export function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string)
           </button>
         </div>
 
-        {data?.configured && (
+        {data?.nvidia.configured && (
           <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-4">
             {visible.slice(0, 80).map((m) => {
               const active = m.id === selected;
@@ -105,12 +123,23 @@ export function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string)
           </div>
         )}
 
-        {visible.length > 80 && <div className="text-[10px] text-fg-dim">Mostrando 80 de {visible.length}. Usa la búsqueda para localizar cualquier modelo.</div>}
+        {visible.length > 80 && (
+          <div className="text-[10px] text-fg-dim">Mostrando 80 de {visible.length}. Usa la búsqueda para localizar cualquier modelo.</div>
+        )}
+
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
-          <span className="text-[10px] text-fg-dim">{msg || (data?.configured ? 'Selecciona un modelo; el agente NVIDIA sigue siendo uno solo.' : 'Configura NVIDIA_API_KEY en Vercel para cargar el catálogo.')}</span>
+          <span className="text-[10px] text-fg-dim">
+            {msg || (data?.nvidia.configured ? 'Selecciona un modelo; el agente NVIDIA sigue siendo uno solo.' : 'Configura NVIDIA_API_KEY en Vercel para cargar el catálogo.')}
+          </span>
           <div className="flex gap-2">
-            {data?.agent && <button onClick={() => onSelectAgent?.(data.nvidia.agent!.id)} className="rounded bg-[#76b900] px-3 py-1.5 text-[11px] font-semibold text-black">Hablar con NVIDIA</button>}
-            <a href="https://build.nvidia.com/models" target="_blank" rel="noreferrer" className="rounded border border-line px-3 py-1.5 text-[11px]">Catálogo NVIDIA ↗</a>
+            {data?.nvidia.agent && (
+              <button onClick={() => onSelectAgent?.(data.nvidia.agent!.id)} className="rounded bg-[#76b900] px-3 py-1.5 text-[11px] font-semibold text-black">
+                Hablar con NVIDIA
+              </button>
+            )}
+            <a href="https://build.nvidia.com/models" target="_blank" rel="noreferrer" className="rounded border border-line px-3 py-1.5 text-[11px]">
+              Catálogo NVIDIA ↗
+            </a>
           </div>
         </div>
         <p className="text-[10px] text-fg-dim">El catálogo se consulta desde el servidor y se refresca automáticamente. La clave nunca llega al navegador.</p>
@@ -119,6 +148,10 @@ export function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string)
   );
 }
 
-function Badge({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'green' | 'amber' }) {
-  return <span className={'rounded border px-1.5 py-0.5 ' + (tone === 'green' ? 'border-st-online/30 text-st-online' : tone === 'amber' ? 'border-st-warn/30 text-st-warn' : 'border-line text-fg-dim')}>{children}</span>;
+function Badge({ children, tone = 'default' }: { children: ReactNode; tone?: 'default' | 'green' | 'amber' }) {
+  return (
+    <span className={'rounded border px-1.5 py-0.5 ' + (tone === 'green' ? 'border-st-online/30 text-st-online' : tone === 'amber' ? 'border-st-warn/30 text-st-warn' : 'border-line text-fg-dim')}>
+      {children}
+    </span>
+  );
 }
