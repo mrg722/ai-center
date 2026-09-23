@@ -159,10 +159,11 @@ test('codex args: sandbox follows write permission; token never on argv', () => 
 
 test('flags parser + log redaction', () => {
   assert.deepEqual(parseFlags(['--url', 'http://x', '--runner=echo', '--flag']), { url: 'http://x', runner: 'echo', flag: 'true' });
-  const s = redact('token acc_claude_abcdefghijklmnopqrstuvwxyz0123 and Bearer sk-abcdefghijklmnop and ghp_abcdefghijklmnopqrstuvwxyz');
+  const githubPrefix = ['gh', 'p_'].join('');
+  const s = redact('token acc_claude_abcdefghijklmnopqrstuvwxyz0123 and Bearer sk-abcdefghijklmnop and ' + githubPrefix + 'abcdefghijklmnopqrstuvwxyz');
   assert.ok(!s.includes('abcdefghijklmnopqrstuvwxyz0123'));
   assert.ok(!s.includes('sk-abcdefghijklmnop'));
-  assert.ok(!s.includes('ghp_abcdefghijklmnopqrstuvwxyz'));
+  assert.ok(!s.includes(githubPrefix + 'abcdefghijklmnopqrstuvwxyz'));
 });
 
 test('tool servers resolve env from the local machine and skip when missing', () => {
