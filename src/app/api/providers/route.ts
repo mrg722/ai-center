@@ -11,7 +11,7 @@ import { getRuntime } from '@/server/providers/registry';
 export const dynamic = 'force-dynamic';
 
 /** Runtime catalogue plus the live NVIDIA model catalogue. Secrets are never returned. */
-export const GET = userRoute(async ({ db }) => {
+export const GET = userRoute(async ({ db, user }) => {
   const runtimes = describeRuntimes();
   const project = await requireProject(db);
   let agent = await getAgentBySlug(db, project.id, 'nvidia');
@@ -37,7 +37,7 @@ export const GET = userRoute(async ({ db }) => {
         ],
       );
       if (inserted.rows[0]?.id) {
-        await seedPermissions(db, inserted.rows[0].id, 'GENERIC', db.userId);
+        await seedPermissions(db, inserted.rows[0].id, 'GENERIC', user.id);
         for (const capability of runtime.capabilities) {
           await db.query(
             'insert into agent_capabilities (agent_id, capability) values ($1, $2) on conflict do nothing',
@@ -47,7 +47,7 @@ export const GET = userRoute(async ({ db }) => {
         await emit(db, {
           project_id: project.id,
           type: 'agent.created',
-          actor: userActor(db.user),
+          actor: userActor(user),
           agent_id: inserted.rows[0].id,
           payload: { slug: 'nvidia' },
         });
