@@ -954,7 +954,8 @@ function moderatorDesk(ctx: CanvasRenderingContext2D, layout: Layout, d: Dynamic
   const signW = Math.max(86, textWidth(name) + 34);
   rect(ctx, cx - signW / 2, m.y - 18, signW, 13, '#0d1117');
   rect(ctx, cx - signW / 2, m.y - 18, signW, 1, '#394452');
-  drawText(ctx, '👑', cx - signW / 2 + 5, m.y - 15, '#f2b544');
+  rect(ctx, cx - signW / 2 + 6, m.y - 14, 5, 2, '#f2b544');
+  rect(ctx, cx - signW / 2 + 7, m.y - 16, 3, 2, '#f2b544');
   drawText(ctx, name, cx - textWidth(name) / 2 + 7, m.y - 15, '#f2b544');
   drawText(ctx, 'ADMIN · PROJECT LEAD', cx - textWidth('ADMIN · PROJECT LEAD') / 2, m.y - 6, '#9aa3ae');
   drawText(ctx, name, cx - textWidth(name) / 2, m.y + m.h + 4, '#f2b544');
