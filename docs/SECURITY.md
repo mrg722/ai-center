@@ -44,7 +44,8 @@ Push puede estar habilitado para Codex, pero debe estar sometido a reglas de apr
 - Las sesiones usan cookies `httpOnly`, `sameSite=strict`, `secure` en producción y expiración.
 - Las mutaciones autenticadas comprueban `Origin` contra el host de la solicitud y aplican rate limiting.
 - GitHub webhooks requieren HMAC SHA-256.
-- El CI ejecuta un escaneo de secretos de alta confianza y una auditoría de dependencias de producción.
+- El CI ejecuta un escaneo de secretos de alta confianza, una auditoría de dependencias de producción y CodeQL.
+- El Agent Bridge elimina del entorno heredado del proceso las variables que parecen contener claves, tokens, contraseñas, credenciales o URLs de base de datos antes de lanzar un CLI. Las credenciales almacenadas por el propio CLI siguen siendo responsabilidad del entorno local y deben usar cuentas/tokens con permisos mínimos.
 
 ## GitHub
 
