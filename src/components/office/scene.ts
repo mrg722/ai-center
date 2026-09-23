@@ -477,14 +477,16 @@ function desk(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dynamic
   const { t } = d;
   const off = a.status === 'OFFLINE';
   const h = hash(a.slug);
+  const isVercel = a.slug === 'vercel';
   const dx = s.x + 20;
   const dy = s.y + 22;
   const dw = s.w - 40;
 
   // desk top
-  rect(ctx, dx, dy, dw, 30, '#4a3a2c');
-  rect(ctx, dx, dy, dw, 2, '#5c4836');
-  rect(ctx, dx, dy + 30, dw, 5, '#33271d');
+  rect(ctx, dx, dy, dw, 30, isVercel ? '#20252f' : '#4a3a2c');
+  rect(ctx, dx, dy, dw, 2, isVercel ? '#f4f4f5' : '#5c4836');
+  rect(ctx, dx, dy + 30, dw, 5, isVercel ? '#111318' : '#33271d');
+  if (isVercel) { const vc=['#ff4d6d','#ffb347','#ffe66d','#5ee58a','#62b6ff','#b388ff']; for (let i=0;i<vc.length;i++) rect(ctx,dx+i*Math.floor(dw/vc.length),dy+28,Math.ceil(dw/vc.length),2,vc[i]); }
   rect(ctx, dx + 3, dy + 35, 4, 4, '#241b14');
   rect(ctx, dx + dw - 7, dy + 35, 4, 4, '#241b14');
 
@@ -563,6 +565,7 @@ function desk(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dynamic
   const lw = textWidth(label);
   const ny = s.y + s.h - 16;
   rect(ctx, cx - lw / 2 - 4, ny - 2, lw + 14, 9, '#0d1117');
+  if (isVercel) { const vc=['#ff4d6d','#ffb347','#ffe66d','#5ee58a','#62b6ff','#b388ff']; for (let i=0;i<vc.length;i++) rect(ctx,cx-lw/2-3+i*3,ny-3,3,1,vc[i]); }
   rect(ctx, cx - lw / 2 - 2, ny + 1, 3, 3, STATUS_HEX[a.status]);
   drawText(ctx, label, cx - lw / 2 + 4, ny, off ? '#5c6779' : a.color);
   // the label is the orchestrator's AgentState verbatim — the office never invents one
