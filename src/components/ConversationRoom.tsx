@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLive, useAgentMap } from '@/lib/client/live';
 import { api } from '@/lib/client/api';
 import type { MessageView } from '@/lib/client/types';
@@ -39,7 +39,7 @@ export function ConversationRoom({
   onTargetChange: (to: string) => void;
   compact?: boolean;
 }) {
-  const { snap, messageTick, activity, liveEvents } = useLive();
+  const { snap, messageTick, activity, statusTick } = useLive();
   const agents = useAgentMap();
   const [messages, setMessages] = useState<MessageView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,6 @@ export function ConversationRoom({
   }, [messageTick]);
 
   // message delivery status (HELD → DELIVERED → PROCESSED) changes on run/system events — reload then, no polling
-  const statusTick = liveEvents.filter((e) => /^(run\.|system\.|approval\.decided)/.test(e.type)).length;
   useEffect(() => {
     if (statusTick) void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -141,7 +140,11 @@ export function ConversationRoom({
   );
 }
 
-function MessageRow({
+// Memoized: without it, every SSE tick re-renders (and re-diffs, including
+// Markdown parsing) the entire message list even though only a handful of
+// rows ever actually change — the main cause of typing/click feeling
+// delayed once there's real event traffic on the page.
+const MessageRow = memo(function MessageRow({
   m,
   prev,
   agents,
@@ -197,6 +200,11 @@ function MessageRow({
           {m.status === 'HELD' && <span className="font-mono text-[10px] text-st-blocked" title="Retenido: sistema detenido, agente o tarea en pausa">RETENIDO</span>}
           {m.status === 'FAILED' && <span className="font-mono text-[10px] text-st-error">FALLÓ</span>}
           {m.status === 'CANCELLED' && <span className="font-mono text-[10px] text-fg-dim">CANCELADO</span>}
+          {m.status === 'SENT' && to?.status === 'OFFLINE' && (
+            <span className="font-mono text-[10px] text-st-blocked" title={`${to.name} no tiene bridge conectado (${to.status_reason || 'sin conexión'}). El mensaje espera en cola; no habrá respuesta hasta que se conecte un bridge real con Agentes → Emitir token.`}>
+              EN COLA · {to.name} sin bridge
+            </span>
+          )}
           <time className="ml-auto text-[10px] text-fg-dim" dateTime={m.created_at}>
             {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </time>
@@ -229,9 +237,12 @@ function MessageRow({
       </div>
     </article>
   );
-}
+});
 
-function Composer({
+// Memoized: the text input lives here, so re-renders here directly show up
+// as "typing feels laggy". Its own props are stable across the unrelated
+// SSE ticks that force the parent (ConversationRoom) to re-render.
+const Composer = memo(function Composer({
   taskId,
   taskKey,
   target,
@@ -386,4 +397,4 @@ function Composer({
       {err && <p className="mt-1.5 text-[11px] text-st-error">{err}</p>}
     </div>
   );
-}
+});

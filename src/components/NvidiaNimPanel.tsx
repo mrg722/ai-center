@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/client/api';
 
 type Model = { id: string; object?: string; created?: number; owned_by?: string };
@@ -17,7 +17,11 @@ type Payload = {
 
 const GREEN = '#76b900';
 
-export function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string) => void }) {
+// Memoized: this panel manages its own data (a 60s poll of /api/providers,
+// not the SSE snapshot), so it has no reason to re-render just because the
+// dashboard page re-renders for something unrelated (e.g. an agent status
+// tick). Requires the parent to pass a stable `onSelectAgent`.
+export const NvidiaNimPanel = memo(function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string) => void }) {
   const [data, setData] = useState<Payload | null>(null);
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState('');
@@ -145,7 +149,7 @@ export function NvidiaNimPanel({ onSelectAgent }: { onSelectAgent?: (id: string)
       </div>
     </section>
   );
-}
+});
 
 function Badge({ children, tone = 'default' }: { children: ReactNode; tone?: 'default' | 'green' | 'amber' }) {
   return (

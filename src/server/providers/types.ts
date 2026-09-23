@@ -112,7 +112,10 @@ export async function postJson<T>(url: string, headers: Record<string, string>, 
     let msg = text.slice(0, 400);
     try {
       const j = JSON.parse(text);
-      msg = j.error?.message ?? j.message ?? msg;
+      // OpenAI-style ({error:{message}} / {message}) and RFC 7807 Problem
+      // Details ({title, detail} — used by NVIDIA NIM and others) both show
+      // up in practice; fall back to the raw text only if neither parses.
+      msg = j.error?.message ?? j.message ?? j.detail ?? msg;
     } catch {
       /* keep raw */
     }

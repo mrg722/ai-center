@@ -7,6 +7,7 @@ import { createTask } from '@/server/orchestrator/tasks';
 import { drainHostedQueue } from '@/server/orchestrator/hosted';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // these routes trigger after(() => drainHostedQueue()), which calls a real provider and can take a while (non-streamed, large-model completions)
 
 export const GET = userRoute(async ({ req, db }) => {
   const project = await requireProject(db);
