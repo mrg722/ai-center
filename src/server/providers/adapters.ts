@@ -296,6 +296,7 @@ export const genericMcpProvider: HttpRuntime = {
         headers: { ...headers, ...(session ? { 'mcp-session-id': session } : {}) },
         body: JSON.stringify({ jsonrpc: '2.0', id, method, params }),
         signal: req.signal,
+        redirect: 'error',
       });
       if (!res.ok) throw new ProviderError(`MCP ${method} → ${res.status}`, res.status);
       const sid = res.headers.get('mcp-session-id') ?? session;
@@ -323,6 +324,7 @@ export const genericMcpProvider: HttpRuntime = {
       headers: { ...headers, ...(init.session ? { 'mcp-session-id': init.session } : {}) },
       body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }),
       signal: req.signal,
+        redirect: 'error',
     }).catch(() => undefined);
     const call = await rpc(
       2,
