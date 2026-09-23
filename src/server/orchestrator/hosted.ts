@@ -3,6 +3,7 @@ import type { AgentRow, ProjectRow } from '../types';
 import type { InboxItem } from '../../shared/protocol';
 import { emit, emitEphemeral } from '../events/bus';
 import { getRuntime, httpReadiness, resolveHttpConfig, resolveModel } from '../providers/registry';
+import { resolveNvidiaModel } from '../providers/nvidia';
 import { isHttpRuntime } from '../providers/types';
 import { parseAgentReply } from './action-parser';
 import { validateAgentAction } from '../validation';
@@ -155,7 +156,31 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
       await completeDelivery(db, agent, delivery.id, { status: 'FAILED', error: `runtime ${agent.runtime} cannot run in the orchestrator` });
       return;
     }
-    const ready = httpReadiness(runtime, agent.config, agent.model);
+    const client = `${runtime.runtime} · ${runtime.provider.name}`;
+    let effectiveModel = resolveModel(runtime, agent.model);
+    try {
+      if (runtime.id === 'nvidia-nim') {
+        const resolved = await resolveNvidiaModel(effectiveModel);
+        effectiveModel = resolved.model;
+        if (resolved.repaired) {
+          await db.query('update agents set model=$2 where id=$1', [agent.id, effectiveModel]);
+          await emit(db, {
+            project_id: project.id,
+            type: 'agent.updated',
+            actor: agentActor(agent),
+            agent_id: agent.id,
+            payload: { model_repaired: true, model: effectiveModel },
+          });
+        }
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'NVIDIA model catalogue unavailable';
+      await completeDelivery(db, agent, delivery.id, { status: 'FAILED', error: msg });
+      await setSession(db, agent, 'ERROR', msg, taskId, client);
+      await emit(db, { project_id: project.id, type: 'agent.error', actor: agentActor(agent), agent_id: agent.id, task_id: taskId, payload: { error: msg.slice(0, 300) } });
+      return;
+    }
+    const ready = httpReadiness(runtime, agent.config, effectiveModel);
     if (!ready.ready) {
       await completeDelivery(db, agent, delivery.id, { status: 'FAILED', error: `Agent not configured: ${ready.reason}` });
       return;
@@ -183,7 +208,6 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
         return;
       }
     }
-    const client = `${runtime.runtime} · ${runtime.provider.name}`;
     await setSession(db, agent, item.message.message_type === 'REVIEW' ? 'REVIEWING' : 'THINKING', `answering ${item.message.message_type} from ${item.message.from}`, taskId, client);
 
     const ctrl = new AbortController();
@@ -193,7 +217,7 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
         {
           system: `You are ${agent.name}, ${agent.role_label || agent.role}, a member of a multi-agent software team coordinated by the AI Command Center orchestrator. Follow the rules in the context.`,
           prompt: item.context.prompt,
-          model: resolveModel(runtime, agent.model),
+          model: effectiveModel,
           maxTokens: agent.config.max_tokens ?? 4096,
           temperature: agent.config.temperature ?? 0.3,
           signal: ctrl.signal,
