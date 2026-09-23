@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   // SQL migrations are read at runtime by the auto-migrator
-  outputFileTracingIncludes: { '/**': ['./supabase/migrations/*.sql'] },
+  outputFileTracingIncludes: { '/*': ['./supabase/migrations/**/*'] },
   serverExternalPackages: ['@electric-sql/pglite', 'pg'],
   async headers() {
     return [
