@@ -10,16 +10,25 @@ function read(name: string): string | undefined {
   return v && v.trim() ? v.trim() : undefined;
 }
 
+// `next start` runs with NODE_ENV=production, including when the e2e suite
+// exercises the real production server build against an ephemeral PGlite
+// database (see playwright.config.ts). This is a narrow, explicit opt-in for
+// that case only — it never relaxes SESSION_SECRET/SETUP_TOKEN/APP_URL
+// enforcement or authentication, and a real deployment (Vercel) never sets it.
+function allowEphemeralDb(): boolean {
+  return read('ACC_ALLOW_EPHEMERAL_DB') === 'true';
+}
+
 export const env = {
   get databaseUrl() {
     const value = read('DATABASE_URL');
-    if (!value && process.env.NODE_ENV === 'production') {
+    if (!value && process.env.NODE_ENV === 'production' && !allowEphemeralDb()) {
       throw new Error('DATABASE_URL must be configured in production. Use the Supabase transaction pooler.');
     }
     return value;
   },
   get pgliteDir() {
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' && !allowEphemeralDb()) {
       throw new Error('PGlite filesystem/in-memory mode is disabled in production. Configure DATABASE_URL.');
     }
     return read('PGLITE_DIR') ?? '.data/pglite';
