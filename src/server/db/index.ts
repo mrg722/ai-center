@@ -88,7 +88,7 @@ async function create(): Promise<Db> {
     types.setTypeParser(20, (v: string) => Number(v)); // int8 → number (ids / counts fit easily)
     const pool = new Pool({
       connectionString: url,
-      max: Number(process.env.DATABASE_POOL_MAX ?? 5),
+      max: Number(process.env.DATABASE_POOL_MAX ?? (env.isProduction ? 1 : 5)),
       idleTimeoutMillis: 20_000,
       ssl: /sslmode=require|supabase\.(co|com)/.test(url) ? { rejectUnauthorized: false } : undefined,
     });
