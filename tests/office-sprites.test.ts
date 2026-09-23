@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getOfficeAnimation, getSpriteFrame } from '@/components/office/animationMachine';
 import { getBotMotion, getMovement, shouldWalkForMessage } from '@/components/office/movement';
+import { resolveSpriteProfile } from '@/components/office/sprites';
 
 describe('AI Office sprite state machine', () => {
   it('maps orchestrator status to visual animation without changing the status', () => {
@@ -32,6 +33,17 @@ describe('AI Office sprite state machine', () => {
     expect(motion.x).toBeGreaterThan(100);
     expect(motion.x).toBeLessThan(300);
     expect(motion.animation).toBe('walking');
+  });
+
+
+  it('keeps each reference character visually distinct', () => {
+    expect(resolveSpriteProfile('claude', '#fff').kind).toBe('claude');
+    expect(resolveSpriteProfile('chatgpt', '#fff').kind).toBe('chatgpt');
+    expect(resolveSpriteProfile('gpt', '#fff').kind).toBe('chatgpt');
+    expect(resolveSpriteProfile('antigravity', '#fff').kind).toBe('antigravity');
+    expect(resolveSpriteProfile('vercel-ai-gateway', '#fff').kind).toBe('vercel');
+    expect(resolveSpriteProfile('nvidia-nim', '#fff').kind).toBe('nvidia');
+    expect(resolveSpriteProfile('moderator', '#fff').glasses).toBe(true);
   });
 
   it('keeps the mascot independent from agent state', () => {
