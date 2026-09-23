@@ -64,7 +64,14 @@ export function getBotMotion(t: number, reducedMotion = false): BotMotion {
   const cycle = 28;
   const phase = (t % cycle) / cycle;
   const segmentFloat = phase * BOT_POINTS.length;
-  const index = Math.floor(segmentFloat) % BOT_POINTS.length;
+  // `t` can be a hair negative on the very first animation frame (the
+  // rAF timestamp occasionally precedes the `performance.now()` captured
+  // synchronously when the effect started), and JS's `%` keeps the sign of
+  // a negative operand — so a plain `% length` can come out as -1 here.
+  // Normalize to a proper positive modulo instead of clamping `t` itself,
+  // so the rest of the animation stays exactly as it already was.
+  const positiveMod = (n: number, m: number) => ((n % m) + m) % m;
+  const index = positiveMod(Math.floor(segmentFloat), BOT_POINTS.length);
   const next = (index + 1) % BOT_POINTS.length;
   const local = segmentFloat - Math.floor(segmentFloat);
   const a = BOT_POINTS[index];

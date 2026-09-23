@@ -530,9 +530,6 @@ function whiteboard(ctx: CanvasRenderingContext2D, x: number, y: number, w: numb
   });
 }
 
-const HAIR = ['#2b2118', '#4a3426', '#b88a5a', '#1b1b24', '#6b4a3a', '#d8d2c4', '#7a2f2f'];
-const SKIN = ['#e9c6a5', '#c8956d', '#8d5a3b', '#f1d3b8', '#b07a55'];
-
 function desk(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: DynamicInput) {
   const { t } = d;
   const off = a.status === 'OFFLINE';
@@ -741,7 +738,6 @@ function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dy
       a.style,
       motion.direction,
       spriteFrame('walking', d.now - movementEvent!.at, d.reducedMotion),
-      d.reducedMotion,
     );
     bubble(ctx, motion.x + 11, motion.y - 36, a, t, d.reducedMotion);
     return;
@@ -784,7 +780,6 @@ function drawWalkingSprite(
   style: string,
   direction: 'up' | 'down' | 'left' | 'right',
   frame: number,
-  reducedMotion: boolean,
 ) {
   drawOfficeSprite({
     ctx,
@@ -929,7 +924,6 @@ function moderatorDesk(ctx: CanvasRenderingContext2D, layout: Layout, d: Dynamic
       'builder',
       modMotion.direction,
       spriteFrame('walking', d.now - modEvent!.at, d.reducedMotion),
-      d.reducedMotion,
     );
   } else {
     const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.3) > 0.6 ? 1 : 0;
