@@ -637,7 +637,8 @@ function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dy
   const off = a.status === 'OFFLINE';
   const hair = HAIR[seed % HAIR.length];
   const skin = SKIN[(seed >> 3) % SKIN.length];
-  const shirt = a.color;
+  const isVercel = a.slug === 'vercel';
+  const shirt = isVercel ? '#f4f4f5' : a.color;
 
   // Compact original avatar: same footprint, but with more readable pixel-art
   // silhouette, face, clothing details and role-specific accessories.
@@ -674,6 +675,7 @@ function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dy
     // Torso with a tiny role marker.
     rect(ctx, cx - 8, y - 10, 16, 12, shirt);
     rect(ctx, cx - 7, y - 11, 14, 1, shade(shirt, 12));
+    if (isVercel) { const vc=['#ff4d6d','#ffb347','#ffe66d','#5ee58a','#62b6ff','#b388ff']; for (let i=0;i<vc.length;i++) rect(ctx,cx-7+i*2,y-9,2,8,vc[i]); }
     rect(ctx, cx - 1, y - 9, 2, 10, shade(shirt, -25));
     if (a.style === 'reviewer') {
       rect(ctx, cx - 6, y - 8, 3, 2, '#e8f0f0');
