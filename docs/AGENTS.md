@@ -85,6 +85,8 @@ Si falta la variable en tu máquina, ese servidor se omite (se avisa en el log d
 
 **Sin código** (runtimes ya registrados): **Agentes → Añadir IA** → elige runtime (p. ej. *Ollama*, *OpenRouter*, *DeepSeek*, *OpenAI-compatible*), slug, rol, modelo, base URL si aplica y el **nombre** de la variable de entorno con su clave. Aparece en el roster, en la oficina (con su escritorio) y ya puede recibir mensajes.
 
+**Vercel AI Gateway** funciona como un runtime HTTP multi-modelo: un solo agente puede apuntar a cualquier modelo del catálogo usando el slug `creator/model` (por ejemplo `openai/gpt-5.6-luna`, `anthropic/claude-opus-5` o `google/gemini-3.8-flash`). Cambiar de modelo no requiere añadir otro adaptador; el orquestador mantiene las mismas políticas, permisos, presupuesto y auditoría.
+
 **Un runtime nuevo** (otra API):
 1. Implementa un `HttpRuntime` en `src/server/providers/adapters.ts` (`generate(req, cfg) → { text, tokensIn, tokensOut }`), con `provider`, `runtime`, `transport: 'http-api'`, `capabilities`, `apiKeyEnv`, `paid`.
 2. Regístralo en `ALL` de `src/server/providers/registry.ts`.
