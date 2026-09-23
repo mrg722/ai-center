@@ -14,6 +14,7 @@ import {
   openrouterProvider,
   perplexityProvider,
   qwenProvider,
+  vercelAiGatewayProvider,
 } from './adapters';
 import { readApiKey } from '../env';
 
@@ -83,6 +84,7 @@ const ALL: Runtime[] = [
   deepseekProvider,
   mistralProvider,
   qwenProvider,
+  vercelAiGatewayProvider,
   ollamaProvider,
   lmstudioProvider,
   genericOpenAIProvider,
