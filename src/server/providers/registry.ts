@@ -16,7 +16,7 @@ import {
   qwenProvider,
   vercelAiGatewayProvider,
 } from './adapters';
-import { readApiKey } from '../env';
+import { env, readApiKey } from '../env';
 
 /* ─── local-bridge runtimes: executed on the user's machine by the Agent Bridge */
 const claudeCode: RuntimeDescriptor = {
@@ -127,7 +127,6 @@ export function resolveModel(p: Runtime, model: string): string {
   return model || (p.modelEnv ? process.env[p.modelEnv] : undefined) || p.defaultModel || '';
 }
 
-import { env, readApiKey } from '../env';
 
 const TRUSTED_ORIGINS: Record<string, string[]> = {
   anthropic: ['https://api.anthropic.com'],
@@ -141,12 +140,13 @@ const TRUSTED_ORIGINS: Record<string, string[]> = {
   'vercel-ai-gateway': ['https://ai-gateway.vercel.sh'],
 };
 
-function originOf(raw: string): string {
-  return new URL(raw).origin;
-}
-
 function trustedBaseUrl(p: Runtime, raw: string | undefined): { url: string; ok: boolean; reason?: string } {
-  if (!raw) return { url: p.defaultBaseUrl ?? '', ok: Boolean(p.defaultBaseUrl) };
+  if (!raw) {
+    if (p.id === 'ollama' || p.id === 'lmstudio') {
+      if (env.isProduction) return { url: '', ok: false, reason: 'local model endpoints are disabled in production' };
+    }
+    return { url: p.defaultBaseUrl ?? '', ok: Boolean(p.defaultBaseUrl) };
+  }
   let url: URL;
   try {
     url = new URL(raw);
