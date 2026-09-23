@@ -50,6 +50,9 @@ export const env = {
   get githubWebhookSecret() {
     return read('GITHUB_WEBHOOK_SECRET');
   },
+  get allowedCustomHosts() {
+    return (read('ACC_ALLOWED_CUSTOM_HOSTS') ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  },
   get contextBudgetChars() {
     return Number(read('CONTEXT_BUDGET_CHARS') ?? 24_000);
   },
