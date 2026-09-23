@@ -1,5 +1,19 @@
 import { spawn, execFile } from 'node:child_process';
 
+const SECRET_ENV_NAME = /(?:API[_-]?KEY|ACCESS[_-]?KEY|AUTH(?:ORIZATION)?|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE[_-]?KEY|DATABASE_URL)/i;
+
+function sanitizedChildEnv(extra?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!SECRET_ENV_NAME.test(key)) out[key] = value;
+  }
+  // Runner-specific non-secret overrides remain supported.
+  for (const [key, value] of Object.entries(extra ?? {})) {
+    if (!SECRET_ENV_NAME.test(key)) out[key] = value;
+  }
+  return out;
+}
+
 export interface ProcResult {
   code: number | null;
   stdout: string;
@@ -26,7 +40,10 @@ export function runProcess(opts: {
   return new Promise((resolve) => {
     const child = spawn(opts.bin, opts.args, {
       cwd: opts.cwd,
-      env: { ...process.env, ...opts.env },
+      // Do not inherit API keys, tokens, database URLs or other obvious secrets into an agent CLI.
+      // Local CLIs authenticate through their own credential stores; secret-bearing env vars
+      // require an explicit, separate integration rather than implicit inheritance.
+      env: sanitizedChildEnv(opts.env),
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
     });
