@@ -63,7 +63,11 @@ export default function CommandCenter() {
         ))}
       </div>
 
-      <div className="shrink-0 p-2 sm:p-3 pb-0">\n        <VercelGatewayPanel onSelectAgent={(id) => { setTarget(id); setTab('room'); }} />\n      </div>\n\n      <div className="grid min-h-0 flex-1 gap-3 p-2 sm:p-3 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_330px]" style={{ height: 'calc(100dvh - 19rem)' }}>
+      <div className="shrink-0 p-2 sm:p-3 pb-0">
+        <VercelGatewayPanel onSelectAgent={(id) => { setTarget(id); setTab('room'); }} />
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-3 p-2 sm:p-3 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_330px]" style={{ height: 'calc(100dvh - 19rem)' }}>
         {/* left: agents + tasks */}
         <div className={cx('min-h-0 flex-col gap-3', tab === 'agents' || tab === 'tasks' ? 'flex' : 'hidden', 'lg:flex')}>
           <div className={cx('min-h-0', tab === 'tasks' ? 'hidden lg:flex lg:flex-col' : 'flex flex-col', 'lg:max-h-[48%]')}>
