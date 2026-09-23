@@ -156,6 +156,7 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
       await completeDelivery(db, agent, delivery.id, { status: 'FAILED', error: `runtime ${agent.runtime} cannot run in the orchestrator` });
       return;
     }
+    const client = `${runtime.runtime} · ${runtime.provider.name}`;
     let effectiveModel = resolveModel(runtime, agent.model);
     try {
       if (runtime.id === 'nvidia-nim') {
@@ -207,7 +208,6 @@ async function runOne(db: Db, agent: AgentRow): Promise<void> {
         return;
       }
     }
-    const client = `${runtime.runtime} · ${runtime.provider.name}`;
     await setSession(db, agent, item.message.message_type === 'REVIEW' ? 'REVIEWING' : 'THINKING', `answering ${item.message.message_type} from ${item.message.from}`, taskId, client);
 
     const ctrl = new AbortController();
