@@ -1,7 +1,7 @@
 import { userRoute } from '@/server/http/route';
 import { describeRuntimes } from '@/server/providers/registry';
 import { readApiKey } from '@/server/env';
-import { listNvidiaModels } from '@/server/providers/nvidia';
+import { listNvidiaModels, resolveNvidiaModel } from '@/server/providers/nvidia';
 import { userActor } from '@/server/auth/session';
 import { emit } from '@/server/events/bus';
 import { getAgentBySlug, requireProject } from '@/server/orchestrator/repo';
@@ -66,6 +66,19 @@ export const GET = userRoute(async ({ db, user }) => {
 
   try {
     const models = await listNvidiaModels();
+    let agentModel = agent?.model ?? '';
+    let modelRepair: { from: string; to: string } | undefined;
+    if (agent) {
+      const resolved = await resolveNvidiaModel(agentModel);
+      if (resolved.repaired) {
+        const from = agentModel;
+        await db.query('update agents set model=$2 where id=$1', [agent.id, resolved.model]);
+        agentModel = resolved.model;
+        modelRepair = { from, to: resolved.model };
+      } else {
+        agentModel = resolved.model;
+      }
+    }
     return {
       runtimes,
       nvidia: {
@@ -73,7 +86,8 @@ export const GET = userRoute(async ({ db, user }) => {
         models,
         total: models.length,
         providers: [...new Set(models.map((m) => m.id.split('/')[0]).filter(Boolean))].sort(),
-        agent: agent ? { id: agent.id, model: agent.model } : null,
+        agent: agent ? { id: agent.id, model: agentModel } : null,
+        ...(modelRepair ? { model_repair: modelRepair } : {}),
       },
     };
   } catch (e) {
