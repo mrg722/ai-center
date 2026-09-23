@@ -951,6 +951,12 @@ function moderatorDesk(ctx: CanvasRenderingContext2D, layout: Layout, d: Dynamic
   }
 
   const name = d.moderatorName.toUpperCase().slice(0, 14);
+  const signW = Math.max(86, textWidth(name) + 34);
+  rect(ctx, cx - signW / 2, m.y - 18, signW, 13, '#0d1117');
+  rect(ctx, cx - signW / 2, m.y - 18, signW, 1, '#394452');
+  drawText(ctx, '👑', cx - signW / 2 + 5, m.y - 15, '#f2b544');
+  drawText(ctx, name, cx - textWidth(name) / 2 + 7, m.y - 15, '#f2b544');
+  drawText(ctx, 'ADMIN · PROJECT LEAD', cx - textWidth('ADMIN · PROJECT LEAD') / 2, m.y - 6, '#9aa3ae');
   drawText(ctx, name, cx - textWidth(name) / 2, m.y + m.h + 4, '#f2b544');
   if (d.tasks.some((task) => task.status === 'WAITING_USER')) {
     const pulse = d.reducedMotion ? 1 : Math.sin(t * 4) > 0 ? 1 : 0;
