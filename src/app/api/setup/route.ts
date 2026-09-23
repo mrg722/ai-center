@@ -5,6 +5,7 @@ import { needsSetup, runSetup } from '@/server/orchestrator/setup';
 import { createSession } from '@/server/auth/session';
 import { env } from '@/server/env';
 import { safeEqual } from '@/server/security/crypto';
+import type { UserRow } from '@/server/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,13 +17,6 @@ export const GET = publicRoute(
   { key: 'setup-get', limit: { limit: 60, windowMs: 60_000 } },
 );
 
-/**
- * First-run bootstrap.
- *
- * Hosted smoke-test mode: when SETUP_TOKEN is not configured, the endpoint
- * accepts any non-empty setup token. This is intentionally temporary and
- * should be replaced by a real SETUP_TOKEN before public production use.
- */
 export const POST = publicRoute(
   async ({ req }) => {
     const body = await readJson(req, setupSchema, 8192);
@@ -40,7 +34,10 @@ export const POST = publicRoute(
       repo: body.repo || undefined,
       default_branch: body.default_branch ?? 'main',
     });
-    await createSession({ id: userId, session_version: 1 });
+    const result = await db.query<UserRow>('select id, email, display_name, role, session_version from users where id=$1', [userId]);
+    const user = result.rows[0];
+    if (!user) throw new HttpError(500, 'setup user was not created');
+    await createSession(user);
     return { ok: true, project_id: project.id };
   },
   { key: 'setup', limit: { limit: 10, windowMs: 15 * 60_000 }, checkOrigin: true },
