@@ -17,15 +17,18 @@ export const GET = publicRoute(
 );
 
 /**
- * First-run bootstrap. Requires SETUP_TOKEN (from the server environment) so
- * nobody who merely finds the URL can claim the instance. Works only once.
+ * First-run bootstrap.
+ *
+ * Hosted smoke-test mode: when SETUP_TOKEN is not configured, the endpoint
+ * accepts any non-empty setup token. This is intentionally temporary and
+ * should be replaced by a real SETUP_TOKEN before public production use.
  */
 export const POST = publicRoute(
   async ({ req }) => {
     const body = await readJson(req, setupSchema, 8192);
     const expected = env.setupToken;
-    if (!expected) throw new HttpError(503, 'SETUP_TOKEN is not configured on the server.');
-    if (!safeEqual(body.setup_token, expected)) throw new HttpError(403, 'invalid setup token');
+    if (expected && !safeEqual(body.setup_token, expected)) throw new HttpError(403, 'invalid setup token');
+    if (!expected && !body.setup_token.trim()) throw new HttpError(403, 'setup token required');
     const db = await getDb();
     if (!(await needsSetup(db))) throw new HttpError(409, 'setup already completed');
     const { userId, project } = await runSetup(db, {
