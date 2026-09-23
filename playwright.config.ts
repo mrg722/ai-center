@@ -27,6 +27,8 @@ export default defineConfig({
       SESSION_SECRET: 'e2e-session-secret-e2e-session-secret-0001',
       SETUP_TOKEN: 'e2e-setup-token',
       ACC_INPROCESS_WORKER: 'true',
+      ACC_ALLOW_EPHEMERAL_DB: 'true',
+      CRON_SECRET: 'e2e-cron-secret',
       APP_URL: `http://localhost:${PORT}`,
     },
   },
