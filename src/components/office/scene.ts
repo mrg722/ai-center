@@ -910,18 +910,60 @@ function moderatorDesk(ctx: CanvasRenderingContext2D, layout: Layout, d: Dynamic
   ctx.globalAlpha = 0.12;
   circle(ctx, m.x + 153, m.y + 33, 16, '#f2b544');
   ctx.globalAlpha = 1;
-  // the moderator (you) — amber hoodie
+  // Martin is a real moderator entity. Approval/task messages can make him
+  // visibly walk toward the relevant agent without changing any backend state.
   const cx = layout.moderator.x;
   const cy = m.y + 76;
-  const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.3) > 0.6 ? 1 : 0;
-  rect(ctx, cx - 10, cy - 4, 20, 14, '#5a4520');
-  rect(ctx, cx - 8, cy - 10 + breathe, 16, 12, '#c9962f');
-  rect(ctx, cx - 10, cy - 16 + breathe, 3, 9, '#a57a24');
-  rect(ctx, cx + 7, cy - 16 + breathe, 3, 9, '#a57a24');
-  rect(ctx, cx - 5, cy - 21 + breathe, 10, 9, '#2b2118');
-  rect(ctx, cx - 11, cy + 2, 22, 8, '#5a4520');
-  rect(ctx, cx - 11, cy + 2, 22, 2, '#7a5f2c');
-  drawText(ctx, d.moderatorName.toUpperCase().slice(0, 14), cx - textWidth(d.moderatorName.toUpperCase().slice(0, 14)) / 2, m.y + m.h + 4, '#f2b544');
+  const modEvent = latestWalkEvent(d, 'moderator');
+  const modTargetId = modEvent?.to[0];
+  const modTarget = modTargetId ? pointOf(layout, modTargetId) : null;
+  const modMotion = modTarget && modEvent
+    ? getMovement(
+        { x: cx, y: m.y + 92 },
+        modTarget,
+        d.now,
+        modEvent.at,
+        'ONLINE',
+        'generic',
+        modEvent.type,
+      )
+    : null;
+
+  if (modMotion?.active) {
+    drawWalkingSprite(
+      ctx,
+      modMotion.x,
+      modMotion.y,
+      '#c9962f',
+      '#e9c6a5',
+      '#2b2118',
+      'builder',
+      modMotion.direction,
+      spriteFrame('walking', d.now - modEvent!.at, d.reducedMotion),
+      7919,
+      resolveSpriteProfile('moderator', '#c9962f'),
+    );
+  } else {
+    const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.3) > 0.6 ? 1 : 0;
+    rect(ctx, cx - 10, cy - 4, 20, 14, '#5a4520');
+    rect(ctx, cx - 8, cy - 10 + breathe, 16, 12, '#c9962f');
+    rect(ctx, cx - 10, cy - 16 + breathe, 3, 9, '#a57a24');
+    rect(ctx, cx + 7, cy - 16 + breathe, 3, 9, '#a57a24');
+    rect(ctx, cx - 5, cy - 21 + breathe, 10, 9, '#2b2118');
+    rect(ctx, cx - 11, cy + 2, 22, 8, '#5a4520');
+    rect(ctx, cx - 11, cy + 2, 22, 2, '#7a5f2c');
+    rect(ctx, cx - 5, cy - 13 + breathe, 4, 2, '#18202b');
+    rect(ctx, cx + 1, cy - 13 + breathe, 4, 2, '#18202b');
+    rect(ctx, cx - 1, cy - 12 + breathe, 2, 1, '#18202b');
+  }
+
+  const name = d.moderatorName.toUpperCase().slice(0, 14);
+  drawText(ctx, name, cx - textWidth(name) / 2, m.y + m.h + 4, '#f2b544');
+  if (d.tasks.some((task) => task.status === 'WAITING_USER')) {
+    const pulse = d.reducedMotion ? 1 : Math.sin(t * 4) > 0 ? 1 : 0;
+    rect(ctx, m.x + m.w - 20, m.y + m.h + 2, 5, 5, pulse ? '#f2b544' : '#4a3512');
+    drawText(ctx, 'APPROVAL', m.x + m.w - 52, m.y + m.h + 10, '#f2b544');
+  }
 }
 
 function pointOf(layout: Layout, id: string): Point {
