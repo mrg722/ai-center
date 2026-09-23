@@ -1,36 +1,31 @@
 import 'server-only';
-import { createHash } from 'node:crypto';
 
 /**
  * Server-side environment access. This module is `server-only`: importing it
- * from a client component fails the build, so secrets can never be bundled
- * into browser code.
+ * from a client component fails the build, so secrets cannot be bundled into
+ * browser code.
  */
 function read(name: string): string | undefined {
   const v = process.env[name];
   return v && v.trim() ? v.trim() : undefined;
 }
 
-function smokeSessionSecret(): string {
-  const seed = `ai-center-smoke-session|${read('APP_URL') ?? 'http://localhost:3000'}`;
-  return createHash('sha256').update(seed).digest('hex');
-}
-
 export const env = {
   get databaseUrl() {
-    return read('DATABASE_URL');
+    const value = read('DATABASE_URL');
+    if (!value && process.env.NODE_ENV === 'production') {
+      throw new Error('DATABASE_URL must be configured in production. Use the Supabase transaction pooler.');
+    }
+    return value;
   },
-  /**
-   * When DATABASE_URL is empty, use embedded Postgres (PGlite).
-   * Vercel's filesystem is not a persistent writable application disk, so
-   * production falls back to memory for smoke-testing instead of attempting
-   * to create .data/pglite. Configure DATABASE_URL for persistent production.
-   */
   get pgliteDir() {
-    return read('PGLITE_DIR') ?? (process.env.NODE_ENV === 'production' ? 'memory' : '.data/pglite');
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('PGlite filesystem/in-memory mode is disabled in production. Configure DATABASE_URL.');
+    }
+    return read('PGLITE_DIR') ?? '.data/pglite';
   },
   get sessionSecret(): string {
-    const s = read('SESSION_SECRET') ?? (process.env.NODE_ENV === 'production' ? smokeSessionSecret() : undefined);
+    const s = read('SESSION_SECRET');
     if (!s || s.length < 32) {
       throw new Error('SESSION_SECRET must be set to at least 32 random characters (see docs/ENVIRONMENT.md).');
     }
@@ -40,7 +35,11 @@ export const env = {
     return read('SETUP_TOKEN');
   },
   get appUrl() {
-    return read('APP_URL') ?? 'http://localhost:3000';
+    const value = read('APP_URL');
+    if (!value && process.env.NODE_ENV === 'production') {
+      throw new Error('APP_URL must be configured in production.');
+    }
+    return value ?? 'http://localhost:3000';
   },
   get cronSecret() {
     return read('CRON_SECRET');
@@ -51,25 +50,27 @@ export const env = {
   get githubWebhookSecret() {
     return read('GITHUB_WEBHOOK_SECRET');
   },
+  get allowedCustomHosts() {
+    return (read('ACC_ALLOWED_CUSTOM_HOSTS') ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  },
   get contextBudgetChars() {
     return Number(read('CONTEXT_BUDGET_CHARS') ?? 24_000);
   },
   get isProduction() {
     return process.env.NODE_ENV === 'production';
   },
-  /** Run hosted agents in-process on an interval (dev / long-running servers). */
   get inprocessWorker() {
     return (read('ACC_INPROCESS_WORKER') ?? (process.env.NODE_ENV === 'production' ? 'false' : 'true')) === 'true';
   },
 };
 
 /**
- * Only environment variables matching this pattern may be referenced as an
- * agent's API key. This prevents a misconfigured agent from exfiltrating
- * other secrets (SESSION_SECRET, DATABASE_URL, …) to an arbitrary base URL.
+ * API-key environment variables are intentionally narrower than arbitrary
+ * secrets. Runtime resolution below additionally locks each built-in provider
+ * to its own configured key and trusted endpoint.
  */
 export const API_KEY_ENV_PATTERN = /^[A-Z][A-Z0-9_]{1,62}_(API_KEY|TOKEN)$/;
-const RESERVED = new Set(['GITHUB_TOKEN', 'SETUP_TOKEN']);
+const RESERVED = new Set(['GITHUB_TOKEN', 'SETUP_TOKEN', 'SESSION_SECRET', 'CRON_SECRET']);
 
 export function readApiKey(envName: string | undefined): string | undefined {
   if (!envName || !API_KEY_ENV_PATTERN.test(envName) || RESERVED.has(envName)) return undefined;

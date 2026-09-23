@@ -54,7 +54,7 @@ export default function SetupPage() {
         </div>
         {state && !state.setup_token_configured && (
           <p className="rounded-md border border-st-blocked/40 bg-st-blocked/10 p-2 text-xs text-st-blocked">
-            Modo de prueba activo: el servidor no tiene SETUP_TOKEN. Para esta prueba puedes introducir cualquier texto como token. Configura un SETUP_TOKEN real antes de hacer público el sistema.
+            El servidor no tiene SETUP_TOKEN configurado. En producción el registro inicial permanece bloqueado hasta que el administrador configure un token real; cualquier texto solo puede usarse en desarrollo local.
           </p>
         )}
         <Field label="Setup token">

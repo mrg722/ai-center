@@ -21,6 +21,7 @@ export const POST = publicRoute(
   async ({ req }) => {
     const body = await readJson(req, setupSchema, 8192);
     const expected = env.setupToken;
+    if (!expected && env.isProduction) throw new HttpError(503, 'setup is locked until SETUP_TOKEN is configured on the server');
     if (expected && !safeEqual(body.setup_token, expected)) throw new HttpError(403, 'invalid setup token');
     if (!expected && !body.setup_token.trim()) throw new HttpError(403, 'setup token required');
     const db = await getDb();

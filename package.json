@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.8",
-    "next": "^15.5.4",
+    "next": "^15.5.26",
     "pg": "^8.13.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
