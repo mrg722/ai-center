@@ -276,7 +276,7 @@ function AgentForm({ open, onClose, providers, agent }: { open: boolean; onClose
       <form onSubmit={save} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Runtime (proveedor · transporte)" hint={p ? `${p.provider.name} · ${p.runtime} · ${p.transport}` : undefined}>
-            <select className={inputCls} value={f.runtime} onChange={(e) => set('runtime', e.target.value)} disabled={Boolean(agent)}>
+            <select className={inputCls} value={f.runtime} onChange={(e) => set('runtime', e.target.value)} disabled={false}>
               {providers.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.label} {x.transport === 'http-api' && x.apiKeyEnv ? (x.apiKeyPresent ? '· key ✓' : '· sin key') : ''}
