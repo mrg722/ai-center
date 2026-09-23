@@ -92,6 +92,7 @@ export class ProviderError extends Error {
   constructor(
     message: string,
     public status?: number,
+    public retryAfterSeconds?: number,
   ) {
     super(message);
   }
@@ -115,7 +116,10 @@ export async function postJson<T>(url: string, headers: Record<string, string>, 
     } catch {
       /* keep raw */
     }
-    const retryHint = res.status === 429 && Number.isFinite(retryAfterSeconds) ? ` Retry-After: ${retryAfterSeconds}s.` : '';\n    throw new ProviderError(`${new URL(url).host} responded ${res.status}: ${msg}${retryHint}`, res.status, Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : undefined);
+    const retryAfterRaw = res.headers.get('retry-after');
+    const retryAfterSeconds = retryAfterRaw ? Number(retryAfterRaw) : undefined;
+    const retryHint = res.status === 429 && Number.isFinite(retryAfterSeconds) ? ` Retry-After: ${retryAfterSeconds}s.` : '';
+    throw new ProviderError(`${new URL(url).host} responded ${res.status}: ${msg}${retryHint}`, res.status, Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : undefined);
   }
   return JSON.parse(text) as T;
 }
