@@ -1,4 +1,4 @@
-import { userRoute, HttpError } from '@/server/http/route';
+import { userRoute, HttpError, readJson } from '@/server/http/route';
 import { getAgentBySlug, agentViews, requireProject } from '@/server/orchestrator/repo';
 import { seedPermissions } from '@/server/orchestrator/moderator';
 import { getRuntime } from '@/server/providers/registry';
@@ -6,12 +6,11 @@ import { readApiKey } from '@/server/env';
 import { userActor } from '@/server/auth/session';
 import { emit } from '@/server/events/bus';
 import { listNvidiaModels, nvidiaModelAvailable } from '@/server/providers/nvidia';
-import { readJson } from '@/server/http/route';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-async function ensureAgent(db: Parameters<typeof requireProject>[0], project: Awaited<ReturnType<typeof requireProject>>, user: { id: string; display_name: string }) {
+async function ensureAgent(db: Parameters<typeof requireProject>[0], project: Awaited<ReturnType<typeof requireProject>>, user: Parameters<typeof userActor>[0]) {
   let agent = await getAgentBySlug(db, project.id, 'nvidia');
   if (agent) return agent;
 
@@ -69,6 +68,9 @@ export const GET = userRoute(async ({ db, user }) => {
 
   try {
     const models = await listNvidiaModels();
+    if (agent && !agent.model && models[0]) {
+      await db.query('update agents set model=$2 where id=$1', [agent.id, models[0].id]);
+    }
     const agents = await agentViews(db, project);
     return {
       configured: true,
