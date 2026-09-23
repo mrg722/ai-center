@@ -249,6 +249,9 @@ function Composer({
   const [type, setType] = useState<MessageType>('REQUEST');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [nvidiaModels, setNvidiaModels] = useState<{ id: string; owned_by?: string }[]>([]);
+  const [nvidiaQuery, setNvidiaQuery] = useState('');
+  const [nvidiaModel, setNvidiaModel] = useState('');
   const agents = snap?.agents ?? [];
 
   async function send() {
@@ -256,7 +259,7 @@ function Composer({
     setBusy(true);
     setErr(null);
     try {
-      await api('/api/messages', { body: { task_id: taskId, to: target, type: target === 'room' ? 'NOTE' : type, content: text } });
+      await api('/api/messages', { body: { task_id: taskId, to: target, type: target === 'room' ? 'NOTE' : type, content: text, ...(targetAgent?.slug === 'nvidia' && nvidiaModel ? { model: nvidiaModel } : {}) } });
       setText('');
     } catch (e) {
       setErr((e as Error).message);
@@ -266,6 +269,35 @@ function Composer({
   }
 
   const targetAgent = agents.find((a) => a.id === target);
+
+  useEffect(() => {
+    if (targetAgent?.slug !== 'nvidia') {
+      setNvidiaModels([]);
+      setNvidiaQuery('');
+      setNvidiaModel('');
+      return;
+    }
+    let cancelled = false;
+    api<{ nvidia: { models: { id: string; owned_by?: string }[]; agent: { id: string; model: string } | null } }>('/api/providers')
+      .then((r) => {
+        if (cancelled) return;
+        setNvidiaModels(r.nvidia.models);
+        setNvidiaModel(targetAgent.model || r.nvidia.agent?.model || r.nvidia.models[0]?.id || '');
+      })
+      .catch(() => {
+        if (!cancelled) setNvidiaModels([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [targetAgent?.slug, targetAgent?.model]);
+
+  const filteredNvidiaModels = useMemo(() => {
+    const needle = nvidiaQuery.trim().toLowerCase();
+    if (!needle) return nvidiaModels;
+    return nvidiaModels.filter((m) => `${m.id} ${m.owned_by ?? ''}`.toLowerCase().includes(needle));
+  }, [nvidiaModels, nvidiaQuery]);
+
   return (
     <div className="shrink-0 border-t border-line bg-ink-900 p-2 sm:p-3">
       <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
@@ -298,6 +330,30 @@ function Composer({
           </select>
         )}
       </div>
+      {targetAgent?.slug === 'nvidia' && (
+        <div className="mb-2 grid gap-1.5 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+          <input
+            value={nvidiaQuery}
+            onChange={(e) => setNvidiaQuery(e.target.value)}
+            placeholder="Buscar modelo NVIDIA…"
+            className="h-8 rounded border border-line bg-ink-950 px-2 text-[11px]"
+            aria-label="Buscar modelo NVIDIA"
+          />
+          <select
+            value={nvidiaModel}
+            onChange={(e) => setNvidiaModel(e.target.value)}
+            className="h-8 min-w-0 rounded border border-[#76b900]/40 bg-ink-950 px-2 font-mono text-[10px] text-fg-muted"
+            aria-label="Modelo NVIDIA"
+          >
+            {!filteredNvidiaModels.length && <option value="">Catálogo NVIDIA no disponible</option>}
+            {filteredNvidiaModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.id}{m.owned_by ? ` · ${m.owned_by}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="flex items-end gap-2">
         <textarea
           value={text}
