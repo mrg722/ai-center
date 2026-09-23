@@ -17,6 +17,9 @@
  */
 import { drawText, textWidth } from './pixelfont';
 import type { AgentStatus, TaskStatus } from '@/shared/domain';
+import { getOfficeAnimation } from './animationMachine';
+import { getBotMotion, getMovement, shouldWalkForMessage } from './movement';
+import { drawOfficeSprite, resolveSpriteProfile, spriteFrame } from './sprites';
 
 export const WORLD = { w: 832, h: 512 };
 
@@ -126,29 +129,43 @@ const MSG_HEX: Record<string, string> = {
 
 /* ───────────────────────────── layout */
 const SLOT_POS: Point[] = [
-  { x: 40, y: 92 },
-  { x: 216, y: 92 },
-  { x: 392, y: 92 },
-  { x: 40, y: 236 },
-  { x: 216, y: 236 },
-  { x: 392, y: 236 },
-  { x: 216, y: 372 },
-  { x: 392, y: 372 },
+  { x: 106, y: 220 }, // Claude Code
+  { x: 286, y: 220 }, // ChatGPT
+  { x: 466, y: 220 }, // Antigravity
+  { x: 646, y: 220 }, // Vercel AI Gateway
+  { x: 646, y: 82 },  // NVIDIA lab
 ];
 const SLOT_W = 168;
 const SLOT_H = 128;
 
+const PREFERRED_SLOT_BY_SLUG: Record<string, Point> = {
+  claude: SLOT_POS[0],
+  chatgpt: SLOT_POS[1],
+  codex: SLOT_POS[1],
+  antigravity: SLOT_POS[2],
+  gemini: SLOT_POS[2],
+  vercel: SLOT_POS[3],
+  'vercel-ai-gateway': SLOT_POS[3],
+  nvidia: SLOT_POS[4],
+  'nvidia-nim': SLOT_POS[4],
+};
+
 export function computeLayout(agents: OfficeAgent[]): Layout {
   const slots = new Map<string, Slot>();
-  agents.slice(0, SLOT_POS.length).forEach((a, i) => {
-    const p = SLOT_POS[i];
-    slots.set(a.id, { x: p.x, y: p.y, w: SLOT_W, h: SLOT_H, seat: { x: p.x + SLOT_W / 2, y: p.y + 70 } });
+  const used = new Set<string>();
+  agents.slice(0, 8).forEach((a, i) => {
+    const p = PREFERRED_SLOT_BY_SLUG[a.slug] ?? SLOT_POS[i] ?? { x: 106, y: 220 };
+    const key = `${p.x}:${p.y}`;
+    const fallback = used.has(key) ? (SLOT_POS.find((candidate) => !used.has(`${candidate.x}:${candidate.y}`)) ?? p) : p;
+    const finalKey = `${fallback.x}:${fallback.y}`;
+    used.add(finalKey);
+    slots.set(a.id, { x: fallback.x, y: fallback.y, w: SLOT_W, h: SLOT_H, seat: { x: fallback.x + SLOT_W / 2, y: fallback.y + 70 } });
   });
   return {
     slots,
-    moderator: { x: 700, y: 214 },
-    moderatorRect: { x: 612, y: 150, w: 176, h: 120 },
-    server: { x: 790, y: 90 },
+    moderator: { x: 416, y: 150 },
+    moderatorRect: { x: 320, y: 74, w: 192, h: 126 },
+    server: { x: 790, y: 100 },
   };
 }
 
@@ -219,22 +236,27 @@ export function paintStatic(ctx: CanvasRenderingContext2D, layout: Layout, agent
   const dusk = (hour >= 18 && hour < 20) || (hour >= 6 && hour < 8);
   const skyTop = night ? '#0b1430' : dusk ? '#3b2a4f' : '#3c6ea8';
   const skyBot = night ? '#1b2748' : dusk ? '#c0735a' : '#8fb8de';
-  for (const wx of [40, 136, 232, 328]) {
-    rect(ctx, wx - 2, 10, 60, 24, '#11151c');
-    for (let i = 0; i < 20; i++) rect(ctx, wx, 12 + i, 56, 1, mix(skyTop, skyBot, i / 20));
-    // skyline silhouettes
+  for (const wx of [14, 116, 218, 320, 422, 524, 626, 728]) {
+    rect(ctx, wx - 2, 10, 88, 52, '#11151c');
+    for (let i = 0; i < 48; i++) rect(ctx, wx, 12 + i, 84, 1, mix(skyTop, skyBot, i / 48));
     const r2 = rng(wx);
-    for (let bx = wx; bx < wx + 56; bx += 6) {
-      const bh = 3 + Math.floor(r2() * 9);
-      rect(ctx, bx, 32 - bh, 5, bh, night ? '#0a0f1e' : '#2c3c55');
-      if (night) for (let k = 0; k < 2; k++) if (r2() < 0.6) rect(ctx, bx + 1 + Math.floor(r2() * 3), 33 - bh + Math.floor(r2() * bh), 1, 1, '#f2d27a');
+    for (let bx = wx; bx < wx + 84; bx += 7) {
+      const bh = 5 + Math.floor(r2() * 18);
+      rect(ctx, bx, 58 - bh, 6, bh, night ? '#0a0f1e' : '#2c3c55');
+      if (night) for (let k = 0; k < 2; k++) if (r2() < 0.6) rect(ctx, bx + 1 + Math.floor(r2() * 4), 57 - bh + Math.floor(r2() * bh), 1, 1, '#f2d27a');
     }
-    rect(ctx, wx + 27, 12, 2, 20, '#11151c');
-    rect(ctx, wx, 21, 56, 1, '#11151c');
+    rect(ctx, wx + 41, 12, 2, 48, '#11151c');
+    rect(ctx, wx, 34, 84, 2, '#11151c');
+  }
+  // Long sill and warm ceiling fixtures echo the reference office.
+  rect(ctx, 8, 62, w - 16, 4, '#11151c');
+  for (const lx of [92, 288, 484, 680]) {
+    rect(ctx, lx, 4, 16, 5, '#151a22');
+    rect(ctx, lx + 5, 9, 6, 4, '#2a303a');
   }
 
   // wall shelves with books (top-left, against wall)
-  bookshelf(ctx, 420, 40, 88, R);
+  // side shelving is added in the reference-room decor block below.
   // filing cabinets
   for (const fx of [516, 540]) {
     rect(ctx, fx, 40, 22, 30, '#3a4150');
@@ -325,11 +347,48 @@ export function paintStatic(ctx: CanvasRenderingContext2D, layout: Layout, agent
   rect(ctx, 588, 128, 10, 12, '#2a303b');
   rect(ctx, 588, 128, 10, 2, '#3a4250');
 
-  // wall labels
+  // Reference-room identity panels: these are decoration only; no operational state is invented here.
+  planBoard(ctx, 18, 86);
+  nvidiaLab(ctx, 642, 72);
+  bookshelf(ctx, 24, 174, 84, R);
+  bookshelf(ctx, 706, 354, 96, R);
   drawText(ctx, 'AI COMMAND CENTER', 506, 20, '#4a5568');
   drawText(ctx, 'MOD', m.x + 82, m.y + 44, '#8a7440');
   drawText(ctx, 'LOUNGE', 698, 470, '#3b4556');
   drawText(ctx, 'KITCHEN', 20, 490, '#3b4556');
+}
+
+function planBoard(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  rect(ctx, x, y, 70, 104, '#0b1016');
+  rect(ctx, x + 2, y + 2, 66, 100, '#18202a');
+  drawText(ctx, 'PLAN', x + 8, y + 10, '#dbe2ec');
+  drawText(ctx, 'BUILD', x + 8, y + 22, '#dbe2ec');
+  drawText(ctx, 'AUTOMATE', x + 8, y + 34, '#dbe2ec');
+  drawText(ctx, 'IMPROVE', x + 8, y + 46, '#dbe2ec');
+  drawText(ctx, 'REPEAT', x + 8, y + 58, '#dbe2ec');
+  rect(ctx, x + 8, y + 76, 18, 2, '#f2b544');
+  rect(ctx, x + 28, y + 76, 12, 2, '#4fc1b5');
+  rect(ctx, x + 42, y + 76, 8, 2, '#8b97a8');
+  rect(ctx, x + 8, y + 84, 34, 2, '#e8b04a');
+  rect(ctx, x + 8, y + 92, 24, 2, '#6fb3d9');
+}
+
+function nvidiaLab(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  rect(ctx, x, y, 172, 124, '#102018');
+  rect(ctx, x + 2, y + 2, 168, 120, '#17251a');
+  rect(ctx, x + 58, y + 7, 58, 26, '#0a0f0b');
+  rect(ctx, x + 66, y + 11, 42, 13, '#1e2b20');
+  rect(ctx, x + 76, y + 14, 22, 6, '#76b900');
+  drawText(ctx, 'NVIDIA', x + 64, y + 36, '#dbe2ec');
+  for (const sx of [x + 12, x + 72, x + 130]) {
+    rect(ctx, sx, y + 48, 34, 22, '#0d1210');
+    rect(ctx, sx + 2, y + 50, 30, 15, '#16221a');
+    rect(ctx, sx + 4, y + 53, 22, 2, '#76b900');
+    rect(ctx, sx + 4, y + 58, 18, 2, '#4b6f2b');
+  }
+  rect(ctx, x + 12, y + 78, 148, 2, '#28442b');
+  drawText(ctx, 'AI INFRASTRUCTURE', x + 34, y + 90, '#76b900');
+  drawText(ctx, 'ACCELERATION', x + 48, y + 102, '#9bb78a');
 }
 
 function roundRug(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, c1: string, c2: string) {
@@ -420,6 +479,7 @@ export function paintDynamic(ctx: CanvasRenderingContext2D, d: DynamicInput) {
     if (s) desk(ctx, s, a, d);
   }
   moderatorDesk(ctx, layout, d);
+  drawMascotBot(ctx, d);
 
   // hover / selection outlines
   for (const [id, s] of layout.slots) {
@@ -477,8 +537,8 @@ function desk(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: Dynamic
   const { t } = d;
   const off = a.status === 'OFFLINE';
   const h = hash(a.slug);
-  const isVercel = a.slug === 'vercel';
-  const isNvidia = a.slug === 'nvidia';
+  const isVercel = a.slug === 'vercel' || a.slug === 'vercel-ai-gateway';
+  const isNvidia = a.slug === 'nvidia' || a.slug === 'nvidia-nim';
   const dx = s.x + 20;
   const dy = s.y + 22;
   const dw = s.w - 40;
@@ -632,147 +692,154 @@ function screen(ctx: CanvasRenderingContext2D, sc: { x: number; y: number; w: nu
   if (st === 'WORKING' && Math.floor(tt * 2) % 2 === 0) rect(ctx, x + 3, y + h - 3, 2, 2, '#dbe2ec');
 }
 
+function latestWalkEvent(d: DynamicInput, from: string): OfficeFlight | null {
+  let best: OfficeFlight | null = null;
+  for (const flight of d.flights) {
+    if (
+      !flight ||
+      flight.from !== from ||
+      !Array.isArray(flight.to) ||
+      flight.to.length === 0 ||
+      !shouldWalkForMessage(flight.type)
+    ) continue;
+    if (d.now < flight.at || d.now - flight.at > 2300) continue;
+    if (!best || flight.at > best.at) best = flight;
+  }
+  return best;
+}
+
 function character(ctx: CanvasRenderingContext2D, s: Slot, a: OfficeAgent, d: DynamicInput, seed: number) {
   const { t } = d;
   const cx = s.x + s.w / 2;
   const cy = s.y + 76;
+  const profile = resolveSpriteProfile(a.slug, a.color);
   const chairC = shade(a.color.length === 7 ? a.color : '#6b7280', -60);
   const off = a.status === 'OFFLINE';
-  const hair = HAIR[seed % HAIR.length];
-  const skin = SKIN[(seed >> 3) % SKIN.length];
-  const isVercel = a.slug === 'vercel';
-  const isNvidia = a.slug === 'nvidia';
-  const shirt = isVercel ? '#f4f4f5' : isNvidia ? '#76b900' : a.color;
 
-  // Compact original avatar: same footprint, but with more readable pixel-art
-  // silhouette, face, clothing details and role-specific accessories.
+  const movementEvent = latestWalkEvent(d, a.id);
+  const targetId = movementEvent?.to[0];
+  const target = targetId ? pointOf(d.layout, targetId) : null;
+  const motion = target && movementEvent
+    ? getMovement(
+        { x: cx, y: s.y + 92 },
+        target,
+        d.now,
+        movementEvent.at,
+        a.status,
+        a.style,
+        movementEvent.type,
+      )
+    : null;
+
+  if (off) {
+    drawChair(ctx, cx, cy, chairC);
+    return;
+  }
+
+  if (motion?.active) {
+    drawWalkingSprite(
+      ctx,
+      motion.x,
+      motion.y,
+      profile,
+      a.slug,
+      a.color,
+      a.style,
+      motion.direction,
+      spriteFrame('walking', d.now - movementEvent!.at, d.reducedMotion),
+      d.reducedMotion,
+    );
+    bubble(ctx, motion.x + 11, motion.y - 36, a, t, d.reducedMotion);
+    return;
+  }
+
+  drawChair(ctx, cx, cy, chairC);
+  const animation = getOfficeAnimation(a.status, a.style);
+  const frame = spriteFrame(animation, t * 1000 + seed * 31, d.reducedMotion);
+  drawOfficeSprite({
+    ctx,
+    x: cx,
+    y: cy,
+    slug: a.slug,
+    shirt: profile.accent,
+    profile,
+    style: a.style,
+    direction: 'down',
+    frame,
+    active: ['WORKING', 'REVIEWING', 'THINKING'].includes(a.status),
+    walking: false,
+  });
+
+  bubble(ctx, cx + 11, cy - 36, a, t, d.reducedMotion);
+}
+function drawChair(ctx: CanvasRenderingContext2D, cx: number, cy: number, chairC: string) {
   rect(ctx, cx - 11, cy - 4, 22, 14, chairC);
   rect(ctx, cx - 11, cy + 2, 22, 8, chairC);
   rect(ctx, cx - 11, cy + 2, 22, 2, shade(chairC, 25));
   rect(ctx, cx - 1, cy + 10, 2, 6, '#1b1f27');
   rect(ctx, cx - 8, cy + 15, 16, 2, '#1b1f27');
-
-  if (off) return;
-
-  const idle = a.status === 'ONLINE' || a.status === 'WAITING';
-  const wander = idle && !d.reducedMotion;
-  const walkPhase = t * 0.9 + seed * 0.17;
-  const wx = wander ? cx + Math.round(Math.sin(walkPhase) * 34) : cx;
-  const wy = wander ? s.y + 91 + Math.round(Math.sin(walkPhase * 0.5) * 4) : cy;
-  const walking = wander && Math.abs(Math.cos(walkPhase)) > 0.18;
-  const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.6 + seed) > 0.6 ? 1 : 0;
-
-  if (wander) {
-    walkingCharacter(ctx, wx, wy, shirt, skin, hair, a.style, walking, walkPhase, seed);
-  } else {
-    const active = ['WORKING', 'REVIEWING', 'THINKING'].includes(a.status);
-    const bob = active && !d.reducedMotion ? Math.floor(t * 6) % 2 : 0;
-    const y = cy + breathe;
-
-    const lArm = active && !d.reducedMotion && Math.floor(t * 8) % 2 === 0 ? -1 : 0;
-    const rArm = active && !d.reducedMotion && Math.floor(t * 8) % 2 === 1 ? -1 : 0;
-    rect(ctx, cx - 10, y - 16 + lArm, 3, 9, shade(shirt, -20));
-    rect(ctx, cx + 7, y - 16 + rArm, 3, 9, shade(shirt, -20));
-    rect(ctx, cx - 10, y - 18 + lArm, 3, 2, skin);
-    rect(ctx, cx + 7, y - 18 + rArm, 3, 2, skin);
-
-    // Torso with a tiny role marker.
-    rect(ctx, cx - 8, y - 10, 16, 12, shirt);
-    rect(ctx, cx - 7, y - 11, 14, 1, shade(shirt, 12));
-    if (isVercel) { const vc=['#ff4d6d','#ffb347','#ffe66d','#5ee58a','#62b6ff','#b388ff']; for (let i=0;i<vc.length;i++) rect(ctx,cx-7+i*2,y-9,2,8,vc[i]); }
-    if (isNvidia) { rect(ctx,cx-5,y-8,10,2,'#111318'); rect(ctx,cx-2,y-6,4,3,'#111318'); }
-    rect(ctx, cx - 1, y - 9, 2, 10, shade(shirt, -25));
-    if (a.style === 'reviewer') {
-      rect(ctx, cx - 6, y - 8, 3, 2, '#e8f0f0');
-      rect(ctx, cx + 3, y - 8, 3, 2, '#e8f0f0');
-    } else if (a.style === 'builder') {
-      rect(ctx, cx - 5, y - 8, 10, 1, shade(shirt, -35));
-      rect(ctx, cx - 1, y - 7, 2, 5, '#d9d0b4');
-    } else if (a.style === 'researcher') {
-      rect(ctx, cx - 2, y - 8, 4, 6, '#f0ead9');
-    }
-
-    // Face: 1-pixel eyes/mouth improve readability without increasing the sprite footprint.
-    const look = a.status === 'WAITING' && !d.reducedMotion ? Math.round(Math.sin(t * 0.8)) : 0;
-    rect(ctx, cx - 2, y - 13, 4, 3, skin);
-    rect(ctx, cx - 5 + look, y - 21 - bob, 10, 9, hair);
-    rect(ctx, cx - 4 + look, y - 22 - bob, 8, 1, hair);
-    rect(ctx, cx - 4 + look, y - 13 - bob, 8, 3, skin);
-    rect(ctx, cx - 3 + look, y - 12 - bob, 1, 1, '#20252f');
-    rect(ctx, cx + 2 + look, y - 12 - bob, 1, 1, '#20252f');
-    if (seed % 3 === 0) rect(ctx, cx + 1 + look, y - 10 - bob, 2, 1, shade(skin, -30));
-
-    // Small role-specific headwear/accessories, kept within the same visible scale.
-    if (a.style === 'builder') {
-      rect(ctx, cx - 5 + look, y - 23 - bob, 10, 2, '#303744');
-      rect(ctx, cx - 2 + look, y - 24 - bob, 4, 1, a.color);
-    } else if (a.style === 'reviewer') {
-      rect(ctx, cx - 6 + look, y - 23 - bob, 12, 2, '#202631');
-      rect(ctx, cx - 4 + look, y - 25 - bob, 2, 2, '#4fc1b5');
-      rect(ctx, cx + 2 + look, y - 25 - bob, 2, 2, '#4fc1b5');
-    } else if (a.style === 'researcher') {
-      rect(ctx, cx - 6 + look, y - 23 - bob, 12, 1, '#5a4638');
-    }
-
-    rect(ctx, cx - 11, cy + 2, 22, 8, chairC);
-    rect(ctx, cx - 11, cy + 2, 22, 2, shade(chairC, 25));
-  }
-
-  bubble(ctx, (wander ? wx : cx) + 11, (wander ? wy : cy) - 36, a, t, d.reducedMotion);
 }
-function walkingCharacter(
+
+function drawWalkingSprite(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  shirt: string,
-  skin: string,
-  hair: string,
+  profile: ReturnType<typeof resolveSpriteProfile>,
+  slug: string,
+  fallbackAccent: string,
   style: string,
-  walking: boolean,
-  phase: number,
-  seed: number,
+  direction: 'up' | 'down' | 'left' | 'right',
+  frame: number,
+  reducedMotion: boolean,
 ) {
-  // shadow
-  rect(ctx, x - 9, y + 10, 18, 3, '#0b0e13');
-
-  // legs, alternating one pixel for a clear walk cycle
-  const step = walking ? (Math.floor(phase * 5) % 2) : 0;
-  const legA = step ? 1 : -1;
-  const legB = -legA;
-  rect(ctx, x - 5 + legA, y + 2, 5, 8, shade(shirt, -28));
-  rect(ctx, x + 1 + legB, y + 2, 5, 8, shade(shirt, -35));
-  rect(ctx, x - 6 + legA, y + 9, 6, 2, '#242933');
-  rect(ctx, x + legB, y + 9, 6, 2, '#242933');
-
-  // body silhouette with style-specific accent
-  rect(ctx, x - 8, y - 10, 16, 13, shirt);
-  rect(ctx, x - 7, y - 11, 14, 2, shirt);
-  if (style === 'reviewer') rect(ctx, x - 10, y - 7, 3, 8, '#4fc1b5');
-  if (style === 'researcher') rect(ctx, x + 7, y - 7, 3, 8, '#a78bfa');
-  if (style === 'builder') rect(ctx, x - 2, y - 9, 4, 8, shade(shirt, -24));
-
-  // arms swing opposite the legs
-  rect(ctx, x - 10 + legB, y - 7, 3, 8, shade(shirt, -20));
-  rect(ctx, x + 7 + legA, y - 7, 3, 8, shade(shirt, -20));
-  rect(ctx, x - 10 + legB, y + 1, 3, 2, skin);
-  rect(ctx, x + 7 + legA, y + 1, 3, 2, skin);
-
-  // head, hair, tiny facial pixel for readability when zoomed
-  rect(ctx, x - 5, y - 20, 10, 9, hair);
-  rect(ctx, x - 4, y - 21, 8, 1, hair);
-  rect(ctx, x - 4, y - 13, 8, 3, skin);
-  rect(ctx, x - 3, y - 13, 1, 1, '#20252f');
-  rect(ctx, x + 2, y - 13, 1, 1, '#20252f');
-
-  // agent-color badge on the back/head silhouette
-  rect(ctx, x - 2, y - 22, 4, 1, mix('#ffffff', shirt, 0.5));
-
-  // tiny status spark for idle agents; it is visual-only and never changes
-  // the actual AgentState represented by the office.
-  const spark = Math.floor(phase * 2 + seed) % 3;
-  if (spark === 0) rect(ctx, x + 11, y - 13, 2, 2, STATUS_HEX.ONLINE);
+  drawOfficeSprite({
+    ctx,
+    x,
+    y,
+    slug,
+    shirt: profile.accent || fallbackAccent,
+    profile,
+    style,
+    direction,
+    frame,
+    active: true,
+    walking: true,
+  });
 }
+function drawMascotBot(ctx: CanvasRenderingContext2D, d: DynamicInput) {
+  const bot = getBotMotion(d.t, d.reducedMotion);
+  const bob = d.reducedMotion ? 0 : Math.round(Math.sin(d.t * 3.2) * 1);
+  const x = Math.round(bot.x);
+  const y = Math.round(bot.y + bob);
+  const walking = bot.animation === 'walking';
+  const leg = walking ? (Math.floor(d.t * 8) % 2 === 0 ? -1 : 1) : 0;
 
+  ctx.globalAlpha = 0.55;
+  rect(ctx, x - 10, y + 9, 20, 3, '#0a0d12');
+  ctx.globalAlpha = 1;
+
+  // Pixel-dog mascot: orange ears/back, white face/body, expressive tail.
+  rect(ctx, x - 8, y - 7, 16, 12, '#f4f1e8');
+  rect(ctx, x - 6, y - 11, 12, 7, '#f4f1e8');
+  rect(ctx, x - 9, y - 10, 4, 7, '#e8792e');
+  rect(ctx, x + 5, y - 10, 4, 7, '#e8792e');
+  rect(ctx, x - 7, y - 9, 5, 4, '#e8792e');
+  rect(ctx, x + 2, y - 5, 2, 2, '#22252b');
+  rect(ctx, x - 4, y - 5, 2, 2, '#22252b');
+  rect(ctx, x - 2, y - 1, 4, 2, '#22252b');
+  rect(ctx, x - 9, y + 2, 4, 4, '#e8792e');
+  rect(ctx, x + 6, y + 1, 4, 3, '#e8792e');
+  rect(ctx, x - 7 + leg, y + 5, 4, 5, '#f4f1e8');
+  rect(ctx, x + 3 - leg, y + 5, 4, 5, '#f4f1e8');
+  rect(ctx, x + 9, y - 3, 5, 2, '#e8792e');
+  rect(ctx, x + 12, y - 5, 3, 3, '#e8792e');
+
+  if (bot.animation === 'observing') {
+    rect(ctx, x + 13, y - 16, 24, 10, '#e9edf2');
+    drawText(ctx, 'bot', x + 16, y - 13, '#3c4655');
+  }
+  drawText(ctx, 'BOT', x - 8, y + 15, '#e8792e');
+}
 function bubble(ctx: CanvasRenderingContext2D, x: number, y: number, a: OfficeAgent, t: number, reduced: boolean) {
   const st = a.status; // orchestrator's AgentState, verbatim
   if (st === 'ONLINE' || st === 'WORKING') return;
@@ -838,36 +905,95 @@ function moderatorDesk(ctx: CanvasRenderingContext2D, layout: Layout, d: Dynamic
   ctx.globalAlpha = 0.12;
   circle(ctx, m.x + 153, m.y + 33, 16, '#f2b544');
   ctx.globalAlpha = 1;
-  // the moderator (you) — amber hoodie
+  // Martin is a real moderator entity. Approval/task messages can make him
+  // visibly walk toward the relevant agent without changing any backend state.
   const cx = layout.moderator.x;
   const cy = m.y + 76;
-  const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.3) > 0.6 ? 1 : 0;
-  rect(ctx, cx - 10, cy - 4, 20, 14, '#5a4520');
-  rect(ctx, cx - 8, cy - 10 + breathe, 16, 12, '#c9962f');
-  rect(ctx, cx - 10, cy - 16 + breathe, 3, 9, '#a57a24');
-  rect(ctx, cx + 7, cy - 16 + breathe, 3, 9, '#a57a24');
-  rect(ctx, cx - 5, cy - 21 + breathe, 10, 9, '#2b2118');
-  rect(ctx, cx - 11, cy + 2, 22, 8, '#5a4520');
-  rect(ctx, cx - 11, cy + 2, 22, 2, '#7a5f2c');
-  drawText(ctx, d.moderatorName.toUpperCase().slice(0, 14), cx - textWidth(d.moderatorName.toUpperCase().slice(0, 14)) / 2, m.y + m.h + 4, '#f2b544');
+  const modEvent = latestWalkEvent(d, 'moderator');
+  const modTargetId = modEvent?.to[0];
+  const modTarget = modTargetId ? pointOf(layout, modTargetId) : null;
+  const modMotion = modTarget && modEvent
+    ? getMovement(
+        { x: cx, y: m.y + 92 },
+        modTarget,
+        d.now,
+        modEvent.at,
+        'ONLINE',
+        'generic',
+        modEvent.type,
+      )
+    : null;
+
+  if (modMotion?.active) {
+    drawWalkingSprite(
+      ctx,
+      modMotion.x,
+      modMotion.y,
+      resolveSpriteProfile('moderator', '#c9962f'),
+      'moderator',
+      '#c9962f',
+      'builder',
+      modMotion.direction,
+      spriteFrame('walking', d.now - modEvent!.at, d.reducedMotion),
+      d.reducedMotion,
+    );
+  } else {
+    const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.3) > 0.6 ? 1 : 0;
+    const profile = resolveSpriteProfile('moderator', '#c9962f');
+    drawChair(ctx, cx, cy, '#5a4520');
+    drawOfficeSprite({
+      ctx,
+      x: cx,
+      y: cy + breathe,
+      slug: 'moderator',
+      shirt: profile.accent,
+      profile,
+      style: 'builder',
+      direction: 'down',
+      frame: spriteFrame('idle', t * 1000 + 7919, d.reducedMotion),
+      active: d.tasks.some((task) => task.status === 'WAITING_USER'),
+      walking: false,
+    });
+  }
+
+  const name = d.moderatorName.toUpperCase().slice(0, 14);
+  const signW = Math.max(86, textWidth(name) + 34);
+  rect(ctx, cx - signW / 2, m.y - 18, signW, 13, '#0d1117');
+  rect(ctx, cx - signW / 2, m.y - 18, signW, 1, '#394452');
+  rect(ctx, cx - signW / 2 + 6, m.y - 14, 5, 2, '#f2b544');
+  rect(ctx, cx - signW / 2 + 7, m.y - 16, 3, 2, '#f2b544');
+  drawText(ctx, name, cx - textWidth(name) / 2 + 7, m.y - 15, '#f2b544');
+  drawText(ctx, 'ADMIN · PROJECT LEAD', cx - textWidth('ADMIN · PROJECT LEAD') / 2, m.y - 6, '#9aa3ae');
+  drawText(ctx, name, cx - textWidth(name) / 2, m.y + m.h + 4, '#f2b544');
+  if (d.tasks.some((task) => task.status === 'WAITING_USER')) {
+    const pulse = d.reducedMotion ? 1 : Math.sin(t * 4) > 0 ? 1 : 0;
+    rect(ctx, m.x + m.w - 20, m.y + m.h + 2, 5, 5, pulse ? '#f2b544' : '#4a3512');
+    drawText(ctx, 'APPROVAL', m.x + m.w - 52, m.y + m.h + 10, '#f2b544');
+  }
 }
 
-function pointOf(layout: Layout, id: string): Point {
+export function pointOf(layout: Layout, id: string): Point | null {
   if (id === 'moderator') return { x: layout.moderator.x, y: layout.moderatorRect.y + 50 };
   if (id === 'system') return layout.server;
   const s = layout.slots.get(id);
-  return s ? { x: s.x + s.w / 2, y: s.y + 50 } : layout.server;
+  return s ? { x: s.x + s.w / 2, y: s.y + 50 } : null;
 }
 
 function flights(ctx: CanvasRenderingContext2D, d: DynamicInput) {
   const DUR = 1400;
   for (const f of d.flights) {
+    if (!f || !Array.isArray(f.to) || f.to.length === 0) continue;
     const age = d.now - f.at;
     if (age < 0 || age > DUR + 700) continue;
+
+    // Realtime events can outlive a layout entry. Never invent a destination.
     const a = pointOf(d.layout, f.from);
+    if (!a) continue;
+
     const color = MSG_HEX[f.type] ?? '#dbe2ec';
     for (const to of f.to) {
       const b = pointOf(d.layout, to);
+      if (!b) continue;
       if (age <= DUR) {
         const p = age / DUR;
         const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
