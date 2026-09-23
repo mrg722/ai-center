@@ -17,6 +17,7 @@ Todas son **solo de servidor**. Ninguna usa el prefijo `NEXT_PUBLIC_`, así que 
 | `ACC_INPROCESS_WORKER` | no | Worker en proceso para runtimes del orquestador y el *presence sweeper* (por defecto `true` en dev, `false` en prod). |
 | `CONTEXT_BUDGET_CHARS` | no | Presupuesto de contexto por ejecución (24000). |
 | `ACC_SIM_DELAY_FACTOR` | no | Velocidad del simulador DEMO (1 = normal, 0 = instantáneo). |
+| `ACC_ALLOWED_CUSTOM_HOSTS` | no | Lista separada por comas de hosts HTTPS exactos permitidos para runtimes HTTP/MCP personalizados. Nunca contiene secretos. |
 
 ## GitHub
 
@@ -42,7 +43,7 @@ Todas son **solo de servidor**. Ninguna usa el prefijo `NEXT_PUBLIC_`, así que 
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway | `VERCEL_AI_GATEWAY_MODEL` (`openai/gpt-5.6-luna`) |
 | — | Ollama / LM Studio | `OLLAMA_MODEL` / `LMSTUDIO_MODEL` (sin clave) |
 
-Un agente puede usar otra variable (campo *Variable de entorno con la API key*), pero **solo** si su nombre termina en `_API_KEY` o `_TOKEN` y no es `GITHUB_TOKEN`/`SETUP_TOKEN`: así un agente mal configurado no puede enviar `SESSION_SECRET` o `DATABASE_URL` a una URL arbitraria.
+Los runtimes integrados ya no pueden elegir otra variable de secreto desde la base de datos: cada proveedor usa exclusivamente su propia variable (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.). Los hosts de proveedores integrados están fijados a una lista de orígenes HTTPS confiables. Los runtimes HTTP/MCP personalizados no reciben ninguna API key del servidor y solo funcionan contra hosts HTTPS explícitamente incluidos en `ACC_ALLOWED_CUSTOM_HOSTS`.
 
 ## En tu máquina (Agent Bridge)
 
