@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/client/api';
 import type { AgentView } from '@/lib/client/types';
 
@@ -9,10 +9,14 @@ type Payload = { models:Model[]; total:number; language:number; byType:Record<st
 const TYPES:Record<string,string>={language:'Texto',image:'Imagen',video:'Video',speech:'Voz',transcription:'Transcripción',embedding:'Embeddings',rerank:'Reranking',realtime:'Realtime'};
 const RAINBOW=['#ff4d6d','#ffb347','#ffe66d','#5ee58a','#62b6ff','#b388ff'];
 
-export function VercelGatewayPanel({onSelectAgent}:{onSelectAgent?:(id:string)=>void}) {
+// Memoized: this panel manages its own data (a 300s poll of /api/vercel, not
+// the SSE snapshot), so it has no reason to re-render just because the
+// dashboard page re-renders for something unrelated. Requires the parent to
+// pass a stable `onSelectAgent`.
+export const VercelGatewayPanel = memo(function VercelGatewayPanel({onSelectAgent}:{onSelectAgent?:(id:string)=>void}) {
   const [data,setData]=useState<Payload|null>(null),[q,setQ]=useState(''),[type,setType]=useState('language'),[selected,setSelected]=useState(''),[busy,setBusy]=useState(false),[msg,setMsg]=useState('');
-  const load=async()=>{try{const x=await api<Payload>('/api/vercel');setData(x);if(!selected)setSelected(x.agent?.model||x.models.find(m=>m.type==='language'&&!m.deprecated_at)?.id||'')}catch(e){setMsg(e instanceof Error?e.message:'No se pudo cargar Vercel AI Gateway')}};
-  useEffect(()=>{void load();const t=window.setInterval(()=>void load(),300000);return()=>window.clearInterval(t)},[]);
+  const load=useCallback(async()=>{try{const x=await api<Payload>('/api/vercel');setData(x);setSelected(s=>s||x.agent?.model||x.models.find(m=>m.type==='language'&&!m.deprecated_at)?.id||'')}catch(e){setMsg(e instanceof Error?e.message:'No se pudo cargar Vercel AI Gateway')}},[]);
+  useEffect(()=>{void load();const t=window.setInterval(()=>void load(),300000);return()=>window.clearInterval(t)},[load]);
   const visible=useMemo(()=>{const a=data?.models??[],s=q.trim().toLowerCase();return a.filter(m=>(type==='all'||m.type===type)&&(!s||[m.id,m.name,m.owned_by??'',...(m.tags??[])].join(' ').toLowerCase().includes(s)))},[data,q,type]);
   const choose=async(m:Model)=>{if(m.type!=='language'||m.deprecated_at)return;setBusy(true);setMsg('');setSelected(m.id);try{const x=await api<{agent:AgentView}>('/api/vercel',{method:'POST',body:{model:m.id}});setData(d=>d?{...d,agent:x.agent}:d);onSelectAgent?.(x.agent.id);setMsg('Modelo activo: '+m.name)}catch(e){setMsg(e instanceof Error?e.message:'No se pudo seleccionar el modelo')}finally{setBusy(false)}};
   const price=(v?:string)=>{if(v===undefined)return'—';const n=Number(v)*1000000;return n===0?'Gratis':'$'+(n<.01?n.toFixed(4):n.toFixed(2))+'/M'};
@@ -28,6 +32,6 @@ export function VercelGatewayPanel({onSelectAgent}:{onSelectAgent?:(id:string)=>
       <p className="text-[10px] text-fg-dim">Los límites, créditos y resets los determina Vercel. Si aparece un 429, respetaremos Retry-After cuando Vercel lo entregue. El saldo exacto se consulta en AI Gateway; Vercel usa créditos prepagados y admite presupuestos con reinicio diario, semanal o mensual.</p>
     </div>
   </section>
-}
+});
 function Badge({children,tone='default'}:{children:React.ReactNode;tone?:'default'|'green'|'amber'}){return <span className={'rounded border px-1.5 py-0.5 '+(tone==='green'?'border-st-online/30 text-st-online':tone==='amber'?'border-st-warn/30 text-st-warn':'border-line text-fg-dim')}>{children}</span>}
 function hashCode(v:string){let h=0;for(let i=0;i<v.length;i++)h=(h*31+v.charCodeAt(i))|0;return h>>>0}

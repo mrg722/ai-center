@@ -33,11 +33,12 @@ const SYSTEM_LABEL: Record<SystemState, (n: number) => { label: string; color: s
 };
 
 export function useGithub() {
-  const { snap, liveEvents } = useLive();
+  const { snap, gitTick } = useLive();
   const [gh, setGh] = useState<GithubStatus | null>(null);
-  const gitTick = liveEvents.filter((e) => e.type.startsWith('git') || e.type.startsWith('github')).length;
+  const ready = Boolean(snap);
+  const repo = snap?.project.repo;
   useEffect(() => {
-    if (!snap) return;
+    if (!ready) return;
     let cancelled = false;
     api<GithubStatus>('/api/github')
       .then((g) => !cancelled && setGh(g))
@@ -45,7 +46,11 @@ export function useGithub() {
     return () => {
       cancelled = true;
     };
-  }, [snap?.project.repo, gitTick, snap]);
+    // Only re-fetch once we have a snapshot, when the repo changes, or when
+    // a git/github event actually arrives — `ready` and `repo` are
+    // primitives, so (unlike depending on `snap` itself) this doesn't
+    // re-run on every unrelated snapshot refresh (e.g. every presence tick).
+  }, [ready, repo, gitTick]);
   return gh;
 }
 
