@@ -219,6 +219,21 @@ export const geminiProvider: HttpRuntime = {
   },
 };
 
+/* ───────────────────────────── NVIDIA NIM API */
+/** NVIDIA NIM exposes an OpenAI-compatible cloud endpoint with a large model catalogue. */
+export const nvidiaProvider = openAICompatible({
+  id: 'nvidia-nim',
+  label: 'NVIDIA NIM',
+  provider: { id: 'nvidia', name: 'NVIDIA NIM' },
+  paid: true,
+  description: 'NVIDIA NIM cloud API. Uses the OpenAI-compatible /v1/chat/completions endpoint; select any currently available NVIDIA model slug.',
+  apiKeyEnv: 'NVIDIA_API_KEY',
+  defaultBaseUrl: 'https://integrate.api.nvidia.com/v1',
+  modelEnv: 'NVIDIA_MODEL',
+  defaultModel: 'nvidia/nemotron-3-super-120b-a12b',
+  capabilities: ['analysis', 'code.review', 'research', 'multi-model'],
+});
+
 /* ───────────────────────────── Vercel AI Gateway */
 /**
  * Vercel AI Gateway exposes a single OpenAI-compatible endpoint for a large
