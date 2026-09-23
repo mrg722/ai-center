@@ -301,7 +301,6 @@ function Composer({
     }
   }
 
-  const targetAgent = agents.find((a) => a.id === target);
   return (
     <div className="shrink-0 border-t border-line bg-ink-900 p-2 sm:p-3">
       <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
