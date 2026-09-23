@@ -881,27 +881,31 @@ function moderatorDesk(ctx: CanvasRenderingContext2D, layout: Layout, d: Dynamic
       ctx,
       modMotion.x,
       modMotion.y,
+      resolveSpriteProfile('moderator', '#c9962f'),
+      'moderator',
       '#c9962f',
-      '#e9c6a5',
-      '#2b2118',
       'builder',
       modMotion.direction,
       spriteFrame('walking', d.now - modEvent!.at, d.reducedMotion),
-      7919,
-      resolveSpriteProfile('moderator', '#c9962f'),
+      d.reducedMotion,
     );
   } else {
     const breathe = d.reducedMotion ? 0 : Math.sin(t * 1.3) > 0.6 ? 1 : 0;
-    rect(ctx, cx - 10, cy - 4, 20, 14, '#5a4520');
-    rect(ctx, cx - 8, cy - 10 + breathe, 16, 12, '#c9962f');
-    rect(ctx, cx - 10, cy - 16 + breathe, 3, 9, '#a57a24');
-    rect(ctx, cx + 7, cy - 16 + breathe, 3, 9, '#a57a24');
-    rect(ctx, cx - 5, cy - 21 + breathe, 10, 9, '#2b2118');
-    rect(ctx, cx - 11, cy + 2, 22, 8, '#5a4520');
-    rect(ctx, cx - 11, cy + 2, 22, 2, '#7a5f2c');
-    rect(ctx, cx - 5, cy - 13 + breathe, 4, 2, '#18202b');
-    rect(ctx, cx + 1, cy - 13 + breathe, 4, 2, '#18202b');
-    rect(ctx, cx - 1, cy - 12 + breathe, 2, 1, '#18202b');
+    const profile = resolveSpriteProfile('moderator', '#c9962f');
+    drawChair(ctx, cx, cy, '#5a4520');
+    drawOfficeSprite({
+      ctx,
+      x: cx,
+      y: cy + breathe,
+      slug: 'moderator',
+      shirt: profile.accent,
+      profile,
+      style: 'builder',
+      direction: 'down',
+      frame: spriteFrame('idle', t * 1000 + 7919, d.reducedMotion),
+      active: d.tasks.some((task) => task.status === 'WAITING_USER'),
+      walking: false,
+    });
   }
 
   const name = d.moderatorName.toUpperCase().slice(0, 14);
