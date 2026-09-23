@@ -16,11 +16,15 @@ export interface SpriteProfile {
 export const SPRITE_PROFILES: Record<string, SpriteProfile> = {
   claude: { accent: '#f97316', hair: '#251812', skin: '#e9c6a5', kind: 'claude' },
   chatgpt: { accent: '#f4f4f2', hair: '#d7d7d0', skin: '#d5d9dc', kind: 'chatgpt', logo: 'chatgpt' },
+  gpt: { accent: '#f4f4f2', hair: '#d7d7d0', skin: '#d5d9dc', kind: 'chatgpt', logo: 'chatgpt' },
+  openai: { accent: '#f4f4f2', hair: '#d7d7d0', skin: '#d5d9dc', kind: 'chatgpt', logo: 'chatgpt' },
   codex: { accent: '#43b883', hair: '#1b1b24', skin: '#c8956d', kind: 'codex' },
   gemini: { accent: '#8b5cf6', hair: '#4a3426', skin: '#f1d3b8', kind: 'antigravity' },
   antigravity: { accent: '#3b82f6', hair: '#17202b', skin: '#e9c6a5', kind: 'antigravity' },
   vercel: { accent: '#f4f4f5', hair: '#15171b', skin: '#cbd0d7', kind: 'vercel', logo: 'vercel' },
+  'vercel-ai-gateway': { accent: '#f4f4f5', hair: '#15171b', skin: '#cbd0d7', kind: 'vercel', logo: 'vercel' },
   nvidia: { accent: '#76b900', hair: '#182016', skin: '#9db39a', kind: 'nvidia', logo: 'nvidia' },
+  'nvidia-nim': { accent: '#76b900', hair: '#182016', skin: '#9db39a', kind: 'nvidia', logo: 'nvidia' },
   moderator: { accent: '#c9962f', hair: '#241a15', skin: '#e9c6a5', kind: 'moderator', glasses: true },
 };
 
