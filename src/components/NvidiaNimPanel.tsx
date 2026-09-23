@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/client/api';
-import type { AgentView } from '@/lib/client/types';
 
 type Model = { id: string; object?: string; created?: number; owned_by?: string };
 type Payload = {
