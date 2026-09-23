@@ -303,22 +303,29 @@ describe('hosted provider round-trip (OpenAI-compatible mock server)', () => {
     });
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
     url = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
+    // Custom HTTP runtimes only reach hosts the operator explicitly
+    // allowlists (ACC_ALLOWED_CUSTOM_HOSTS) — allow the loopback mock server.
+    process.env.ACC_ALLOWED_CUSTOM_HOSTS = '127.0.0.1';
   });
-  afterAll(() => server.close());
+  afterAll(() => {
+    server.close();
+    delete process.env.ACC_ALLOWED_CUSTOM_HOSTS;
+  });
 
   it('runs the model, posts its answer and executes its declared actions through policy', async () => {
     await fresh();
-    process.env.LOCALTEST_API_KEY = 'sk-local-test';
     const r = await db.query<{ id: string }>(
       `insert into agents (project_id, slug, name, runtime, transport, model, role, role_label, config)
        values ($1,'qwen','Qwen','openai-compatible','http-api','qwen-test','RESEARCHER','Researcher',$2) returning id`,
-      [project.id, JSON.stringify({ base_url: url, api_key_env: 'LOCALTEST_API_KEY' })],
+      [project.id, JSON.stringify({ base_url: url })],
     );
     await seedPermissions(db, r.rows[0].id, 'RESEARCHER', user.id);
     const t = await createTask(db, { project, actor: user, title: 'Compare A vs B', assignedAgentId: r.rows[0].id });
     await drainHostedQueue();
     expect(seen).toHaveLength(1);
-    expect(seen[0].auth).toBe('Bearer sk-local-test');
+    // Generic/custom HTTP runtimes never receive a server-side secret (closes
+    // the api_key_env exfiltration path) — no Authorization header is sent.
+    expect(seen[0].auth).toBeUndefined();
     expect(seen[0].body.model).toBe('qwen-test');
     expect(seen[0].body.messages[1].content).toContain('Compare A vs B');
     const msgs = await db.query<{ message_type: string; content: string; to_agent: string | null }>(`select message_type, content, to_agent from messages where task_id=$1 order by seq`, [t.id]);

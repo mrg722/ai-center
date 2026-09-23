@@ -19,6 +19,9 @@
     "setup:env": "node scripts/setup-env.mjs",
     "db:migrate": "node scripts/migrate.mjs"
   },
+  "overrides": {
+    "postcss": "^8.5.28"
+  },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.8",
     "next": "^15.5.26",

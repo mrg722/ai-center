@@ -156,6 +156,21 @@ export interface RuntimeInfo {
   capabilities: string[];
 }
 
+export interface NvidiaModel {
+  id: string;
+  object?: string;
+  created?: number;
+  owned_by?: string;
+}
+
+export interface NvidiaCatalog {
+  configured: boolean;
+  models: NvidiaModel[];
+  total: number;
+  providers: string[];
+  error?: string;
+}
+
 export interface GithubStatus {
   configured: boolean;
   token: boolean;
