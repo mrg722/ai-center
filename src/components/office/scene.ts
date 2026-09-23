@@ -256,7 +256,7 @@ export function paintStatic(ctx: CanvasRenderingContext2D, layout: Layout, agent
   }
 
   // wall shelves with books (top-left, against wall)
-  bookshelf(ctx, 420, 40, 88, R);
+  // side shelving is added in the reference-room decor block below.
   // filing cabinets
   for (const fx of [516, 540]) {
     rect(ctx, fx, 40, 22, 30, '#3a4150');
