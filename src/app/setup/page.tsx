@@ -49,16 +49,16 @@ export default function SetupPage() {
           <div className="font-mono text-[11px] tracking-[0.2em] text-accent">AI COMMAND CENTER · PRIMER ARRANQUE</div>
           <h1 className="mt-1 text-lg font-semibold">Crea el moderador y el proyecto</h1>
           <p className="mt-1 text-xs text-fg-dim">
-            Se crearán los agentes Claude (builder), GPT/Codex (auditor) y Gemini (researcher) con sus permisos por defecto. Necesitas el SETUP_TOKEN del entorno del servidor.
+            Se crearán los agentes Claude (builder), GPT/Codex (auditor) y Gemini (researcher) con sus permisos por defecto.
           </p>
         </div>
         {state && !state.setup_token_configured && (
           <p className="rounded-md border border-st-blocked/40 bg-st-blocked/10 p-2 text-xs text-st-blocked">
-            El servidor no tiene SETUP_TOKEN. Añádelo a .env.local (ver docs/SETUP.md) y reinicia.
+            Modo de prueba activo: el servidor no tiene SETUP_TOKEN. Para esta prueba puedes introducir cualquier texto como token. Configura un SETUP_TOKEN real antes de hacer público el sistema.
           </p>
         )}
         <Field label="Setup token">
-          <input className={inputCls} type="password" value={f.setup_token} onChange={set('setup_token')} required autoComplete="off" />
+          <input className={inputCls} type="password" value={f.setup_token} onChange={set('setup_token')} required autoComplete="off" placeholder={state && !state.setup_token_configured ? 'Token de prueba' : undefined} />
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Tu nombre">
