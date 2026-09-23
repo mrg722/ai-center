@@ -3,7 +3,7 @@ import { getAgentBySlug, agentViews, requireProject } from '@/server/orchestrato
 import { seedPermissions } from '@/server/orchestrator/moderator';
 import { getRuntime } from '@/server/providers/registry';
 import { readApiKey } from '@/server/env';
-import { userActor } from '@/server/auth/session';
+import { userActor, type SessionUser } from '@/server/auth/session';
 import type { Db } from '@/server/db';
 import type { ProjectRow } from '@/server/types';
 import { emit } from '@/server/events/bus';
@@ -12,7 +12,7 @@ import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-async function ensureNvidiaAgent(db: Db, project: ProjectRow, userId: string, userName: string) {
+async function ensureNvidiaAgent(db: Db, project: ProjectRow, user: SessionUser) {
   const existing = await getAgentBySlug(db, project.id, 'nvidia');
   if (existing) return existing;
 
@@ -39,7 +39,7 @@ async function ensureNvidiaAgent(db: Db, project: ProjectRow, userId: string, us
   const agentId = inserted.rows[0]?.id;
   if (!agentId) throw new HttpError(500, 'failed to create NVIDIA agent');
 
-  await seedPermissions(db, agentId, 'GENERIC', userId);
+  await seedPermissions(db, agentId, 'GENERIC', user.id);
   for (const capability of runtime.capabilities) {
     await db.query(
       'insert into agent_capabilities (agent_id, capability) values ($1, $2) on conflict do nothing',
@@ -50,7 +50,7 @@ async function ensureNvidiaAgent(db: Db, project: ProjectRow, userId: string, us
   await emit(db, {
     project_id: project.id,
     type: 'agent.created',
-    actor: userActor({ id: userId, name: userName, email: '', role: 'owner' }),
+    actor: userActor(user),
     agent_id: agentId,
     payload: { slug: 'nvidia' },
   });
@@ -60,7 +60,7 @@ async function ensureNvidiaAgent(db: Db, project: ProjectRow, userId: string, us
 
 export const GET = userRoute(async ({ db, user }) => {
   const project = await requireProject(db);
-  const agent = await ensureNvidiaAgent(db, project, user.id, user.name);
+  const agent = await ensureNvidiaAgent(db, project, user);
   const configured = Boolean(readApiKey('NVIDIA_API_KEY'));
 
   if (!configured) {
