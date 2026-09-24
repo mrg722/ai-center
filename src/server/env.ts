@@ -1,7 +1,7 @@
 import 'server-only';
 
 /**
- * Server-side environment access. This module is `server-only`: importing it
+ * Server-side environment access. This module is server-only: importing it
  * from a client component fails the build, so secrets cannot be bundled into
  * browser code.
  */
@@ -10,11 +10,6 @@ function read(name: string): string | undefined {
   return v && v.trim() ? v.trim() : undefined;
 }
 
-// `next start` runs with NODE_ENV=production, including when the e2e suite
-// exercises the real production server build against an ephemeral PGlite
-// database (see playwright.config.ts). This is a narrow, explicit opt-in for
-// that case only — it never relaxes SESSION_SECRET/SETUP_TOKEN/APP_URL
-// enforcement or authentication, and a real deployment (Vercel) never sets it.
 function allowEphemeralDb(): boolean {
   return read('ACC_ALLOW_EPHEMERAL_DB') === 'true';
 }
@@ -73,16 +68,16 @@ export const env = {
   },
 };
 
-/**
- * API-key environment variables are intentionally narrower than arbitrary
- * secrets. Runtime resolution below additionally locks each built-in provider
- * to its own configured key and trusted endpoint.
- */
 export const API_KEY_ENV_PATTERN = /^[A-Z][A-Z0-9_]{1,62}_(API_KEY|TOKEN)$/;
 const RESERVED = new Set(['GITHUB_TOKEN', 'SETUP_TOKEN', 'SESSION_SECRET', 'CRON_SECRET']);
 
 export function readApiKey(envName: string | undefined): string | undefined {
   if (!envName || !API_KEY_ENV_PATTERN.test(envName) || RESERVED.has(envName)) return undefined;
+
+  // Vercel AI Gateway supports platform-issued OIDC credentials. Prefer an
+  // explicitly configured Gateway API key, then fall back to VERCEL_OIDC_TOKEN.
+  if (envName === 'AI_GATEWAY_API_KEY') return read(envName) ?? read('VERCEL_OIDC_TOKEN');
+
   return read(envName);
 }
 

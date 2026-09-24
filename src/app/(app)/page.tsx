@@ -71,12 +71,27 @@ export default function CommandCenter() {
         ))}
       </div>
 
-      <div className="shrink-0 space-y-2 p-2 sm:p-3 pb-0">
+      {/* Chat principal primero: en móvil y escritorio la conversación queda
+          inmediatamente bajo las pestañas, antes de los paneles de proveedores. */}
+      <section className="mx-2 mt-2 h-[clamp(420px,55vh,640px)] min-h-0 overflow-hidden rounded-lg border border-line bg-ink-900 sm:mx-3">
+        {task ? (
+          <div className="flex h-full min-h-0 flex-col">
+            <TaskControls task={task} />
+            <div className="min-h-0 flex-1">
+              <ConversationRoom taskId={taskId} taskKey={task.key} target={target} onTargetChange={setTarget} />
+            </div>
+          </div>
+        ) : (
+          <ConversationRoom taskId={taskId} taskKey={null} target={target} onTargetChange={setTarget} />
+        )}
+      </section>
+
+      <div className="shrink-0 space-y-2 p-2 sm:p-3">
         <NvidiaNimPanel onSelectAgent={selectAgentAndOpenRoom} />
         <VercelGatewayPanel onSelectAgent={selectAgentAndOpenRoom} />
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-3 p-2 sm:p-3 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_330px]">
+      <div className="grid min-h-0 flex-1 gap-3 p-2 sm:p-3 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
         {/* left: agents + tasks */}
         <div className={cx('min-h-0 flex-col gap-3', tab === 'agents' || tab === 'tasks' ? 'flex' : 'hidden', 'lg:flex')}>
           <div className={cx('min-h-0', tab === 'tasks' ? 'hidden lg:flex lg:flex-col' : 'flex flex-col', 'lg:max-h-[48%]')}>
@@ -86,22 +101,6 @@ export default function CommandCenter() {
             <TaskList selected={taskId} onSelect={selectTask} />
           </div>
         </div>
-
-        {/* center: conversation */}
-        <section className={cx('min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-ink-900', tab === 'room' ? 'flex' : 'hidden', 'lg:flex')}>
-          {task ? (
-            <TaskControls task={task} />
-          ) : (
-            <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
-              <span className="font-mono text-[11px] text-fg-dim">#</span>
-              <span className="text-sm font-medium">Sala general</span>
-              <span className="text-[11px] text-fg-dim">— toda la conversación entre IAs y tú, en tiempo real</span>
-            </div>
-          )}
-          <div className="min-h-0 flex-1">
-            <ConversationRoom taskId={taskId} taskKey={task?.key} target={target} onTargetChange={setTarget} />
-          </div>
-        </section>
 
         {/* right: approvals, office preview, github, activity */}
         <div className={cx('min-h-0 flex-col gap-3 overflow-y-auto', tab === 'approvals' ? 'flex' : 'hidden', 'xl:flex')}>
