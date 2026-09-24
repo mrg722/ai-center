@@ -55,14 +55,6 @@ function rect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h:
   ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 }
 
-function circle(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
-  ctx.fillStyle = color;
-  for (let y = -r; y <= r; y++) {
-    const half = Math.floor(Math.sqrt(Math.max(0, r * r - y * y)));
-    ctx.fillRect(Math.round(cx - half), Math.round(cy + y), half * 2 + 1, 1);
-  }
-}
-
 export interface OfficeSpriteOptions {
   ctx: CanvasRenderingContext2D;
   x: number;
