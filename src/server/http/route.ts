@@ -33,13 +33,41 @@ function toResponse(e: unknown): NextResponse {
   return NextResponse.json({ error: 'internal error' }, { status: 500 });
 }
 
-/** CSRF defence for cookie-authenticated mutations: Origin must match Host. */
-function checkOrigin(req: NextRequest) {
+/**
+ * CSRF defence for cookie-authenticated mutations: Origin (or, failing that,
+ * Referer) must match Host.
+ *
+ * Modern browsers send `Origin` on every same-origin POST/PUT/PATCH/DELETE,
+ * not only cross-origin ones, specifically so this check works — but some
+ * mobile in-app WebViews and a few carrier-level data-saving proxies strip
+ * it from otherwise-legitimate same-origin requests while still forwarding
+ * `Referer`. Rejecting those outright means real users get a "403 talking to
+ * the AI" with no way to recover. Falling back to `Referer` (also matched
+ * against Host) keeps the same guarantee — a genuine cross-site request has
+ * neither a matching Origin nor a matching Referer — while accepting that
+ * narrower, but real, class of client.
+ */
+export function checkOrigin(req: NextRequest) {
   if (req.method === 'GET' || req.method === 'HEAD') return;
-  const origin = req.headers.get('origin');
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
-  if (!origin || !host) throw new HttpError(403, 'missing origin');
-  if (new URL(origin).host !== host) throw new HttpError(403, 'cross-origin request rejected');
+  if (!host) throw new HttpError(403, 'missing host');
+  const origin = req.headers.get('origin');
+  if (origin) {
+    if (new URL(origin).host !== host) throw new HttpError(403, 'cross-origin request rejected');
+    return;
+  }
+  const referer = req.headers.get('referer');
+  if (referer) {
+    let refererHost: string;
+    try {
+      refererHost = new URL(referer).host;
+    } catch {
+      throw new HttpError(403, 'missing origin');
+    }
+    if (refererHost !== host) throw new HttpError(403, 'cross-origin request rejected');
+    return;
+  }
+  throw new HttpError(403, 'missing origin');
 }
 
 export async function readJson<T>(req: NextRequest, schema: ZodType<T>, maxBytes = 256 * 1024): Promise<T> {
