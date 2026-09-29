@@ -313,7 +313,21 @@ const Composer = memo(function Composer({
   const [nvidiaModels, setNvidiaModels] = useState<{ id: string; owned_by?: string }[]>([]);
   const [nvidiaQuery, setNvidiaQuery] = useState('');
   const [nvidiaModel, setNvidiaModel] = useState('');
+  const [orModels, setOrModels] = useState<{ id: string; name?: string }[]>([]);
+  const [orQuery, setOrQuery] = useState('');
+  const [orModel, setOrModel] = useState('');
+  const [orStatus, setOrStatus] = useState<{ limit: number | null; usage: number; limit_remaining: number | null; is_free_tier: boolean; rate_limit: { requests: number; interval: string } | null } | null>(null);
   const agents = snap?.agents ?? [];
+
+  /** Persists the picked model on the agent (same control op the Agent Workspace/Inspector use) so it's actually applied, not just shown in the dropdown. */
+  async function applyModel(agentId: string, model: string) {
+    if (!model) return;
+    try {
+      await api(`/api/agents/${agentId}/control`, { body: { op: 'set_model', model } });
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
 
   async function send() {
     if (!text.trim()) return;
@@ -348,7 +362,9 @@ const Composer = memo(function Composer({
       task_key: taskKey ?? null,
     });
     try {
-      await api('/api/messages', { body: { task_id: taskId, to: target, type: msgType, content, ...(targetAgent?.slug === 'nvidia' && nvidiaModel ? { model: nvidiaModel } : {}) } });
+      // Model selection is applied immediately when picked (applyModel, via
+      // the agent's set_model control op) — not per-message.
+      await api('/api/messages', { body: { task_id: taskId, to: target, type: msgType, content } });
     } catch (e) {
       onOptimisticFail(pendingId);
       setText(content);
@@ -387,6 +403,36 @@ const Composer = memo(function Composer({
     if (!needle) return nvidiaModels;
     return nvidiaModels.filter((m) => `${m.id} ${m.owned_by ?? ''}`.toLowerCase().includes(needle));
   }, [nvidiaModels, nvidiaQuery]);
+
+  useEffect(() => {
+    if (targetAgent?.runtime !== 'openrouter') {
+      setOrModels([]);
+      setOrQuery('');
+      setOrModel('');
+      setOrStatus(null);
+      return;
+    }
+    let cancelled = false;
+    api<{ openrouter: { models: { id: string; name?: string }[]; key_status: typeof orStatus } }>('/api/providers')
+      .then((r) => {
+        if (cancelled) return;
+        setOrModels(r.openrouter.models);
+        setOrStatus(r.openrouter.key_status);
+        setOrModel(targetAgent.model || r.openrouter.models[0]?.id || '');
+      })
+      .catch(() => {
+        if (!cancelled) setOrModels([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [targetAgent?.runtime, targetAgent?.model]);
+
+  const filteredOrModels = useMemo(() => {
+    const needle = orQuery.trim().toLowerCase();
+    if (!needle) return orModels;
+    return orModels.filter((m) => `${m.id} ${m.name ?? ''}`.toLowerCase().includes(needle));
+  }, [orModels, orQuery]);
 
   return (
     <div className="shrink-0 border-t border-line bg-ink-900 p-2 sm:p-3">
@@ -431,7 +477,10 @@ const Composer = memo(function Composer({
           />
           <select
             value={nvidiaModel}
-            onChange={(e) => setNvidiaModel(e.target.value)}
+            onChange={(e) => {
+              setNvidiaModel(e.target.value);
+              if (targetAgent) void applyModel(targetAgent.id, e.target.value);
+            }}
             className="h-8 min-w-0 rounded border border-[#76b900]/40 bg-ink-950 px-2 font-mono text-[10px] text-fg-muted"
             aria-label="Modelo NVIDIA"
           >
@@ -442,6 +491,44 @@ const Composer = memo(function Composer({
               </option>
             ))}
           </select>
+        </div>
+      )}
+      {targetAgent?.runtime === 'openrouter' && (
+        <div className="mb-2 space-y-1">
+          <div className="grid gap-1.5 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+            <input
+              value={orQuery}
+              onChange={(e) => setOrQuery(e.target.value)}
+              placeholder="Buscar modelo gratis de OpenRouter…"
+              className="h-8 rounded border border-line bg-ink-950 px-2 text-[11px]"
+              aria-label="Buscar modelo OpenRouter"
+            />
+            <select
+              value={orModel}
+              onChange={(e) => {
+                setOrModel(e.target.value);
+                if (targetAgent) void applyModel(targetAgent.id, e.target.value);
+              }}
+              className="h-8 min-w-0 rounded border border-line bg-ink-950 px-2 font-mono text-[10px] text-fg-muted"
+              aria-label="Modelo OpenRouter"
+            >
+              {!filteredOrModels.length && <option value="">Sin modelos gratis disponibles</option>}
+              {filteredOrModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name ?? m.id}
+                </option>
+              ))}
+            </select>
+          </div>
+          {orStatus && (
+            <p className="text-[10px] text-fg-dim">
+              Uso: {orStatus.usage}
+              {orStatus.limit !== null ? ` / ${orStatus.limit}` : ''}
+              {orStatus.limit_remaining !== null ? ` · quedan ${orStatus.limit_remaining}` : ''}
+              {orStatus.rate_limit ? ` · límite ${orStatus.rate_limit.requests}/${orStatus.rate_limit.interval}` : ''}
+              {orStatus.is_free_tier ? ' · plan gratuito' : ''}
+            </p>
+          )}
         </div>
       )}
       <div className="flex items-end gap-2">
