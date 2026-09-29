@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useLive, useAgentMap } from '@/lib/client/live';
 import { api } from '@/lib/client/api';
-import type { AgentView, EventView, GithubStatus, TaskSummary } from '@/lib/client/types';
+import type { AgentView, EventView, GithubStatus, KnowledgeDocumentView, MemoryView, RoutingEntry, TaskSummary } from '@/lib/client/types';
 import { PRIORITIES, TERMINAL_TASK_STATUSES } from '@/shared/domain';
 import { AgentAvatar, Button, cx, Empty, Field, inputCls, Modal, Panel, StatusBadge, TaskStatusBadge, timeAgo } from './ui';
 
@@ -412,6 +412,132 @@ export function GithubPanel({ gh }: { gh: GithubStatus | null }) {
           {gh.open_issues !== undefined && <div className="text-[11px] text-fg-dim">Issues abiertos: {gh.open_issues}</div>}
         </div>
       )}
+    </Panel>
+  );
+}
+
+/* ───────────────────────────── Context: Memory + Knowledge + Model Router */
+
+const ROUTING_LABEL: Record<RoutingEntry['capability'], string> = {
+  simple: 'Tareas simples',
+  code: 'Código',
+  research: 'Investigación',
+  security: 'Seguridad',
+  reasoning: 'Razonamiento complejo',
+};
+
+/**
+ * Compact snapshot of what the Context Engine would actually give an agent
+ * right now: pinned/recent memory, recent knowledge, and the resolved Model
+ * Router table. Read-only here; edit on /memory, /knowledge, /agents.
+ */
+export function ContextPanel() {
+  const { snap } = useLive();
+  const [memories, setMemories] = useState<MemoryView[] | null>(null);
+  const [docs, setDocs] = useState<KnowledgeDocumentView[] | null>(null);
+  const [routing, setRouting] = useState<RoutingEntry[] | null>(null);
+  const [tab, setTab] = useState<'memory' | 'knowledge' | 'router'>('memory');
+
+  useEffect(() => {
+    api<{ memories: MemoryView[] }>('/api/memory?archived=false')
+      .then((r) => setMemories(r.memories.slice(0, 8)))
+      .catch(() => setMemories([]));
+    api<{ documents: KnowledgeDocumentView[] }>('/api/knowledge')
+      .then((r) => setDocs(r.documents.slice(0, 8)))
+      .catch(() => setDocs([]));
+    api<{ model_routing: RoutingEntry[] }>('/api/providers')
+      .then((r) => setRouting(r.model_routing))
+      .catch(() => setRouting([]));
+  }, []);
+
+  const agentName = (id: string | null) => (id ? (snap?.agents.find((a) => a.id === id)?.name ?? id.slice(0, 8)) : null);
+
+  return (
+    <Panel
+      title="Contexto"
+      actions={
+        <div className="flex gap-0.5">
+          {(
+            [
+              { id: 'memory' as const, label: `Memory (${memories?.length ?? '…'})` },
+              { id: 'knowledge' as const, label: `Knowledge (${docs?.length ?? '…'})` },
+              { id: 'router' as const, label: 'Router' },
+            ]
+          ).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cx('rounded px-1.5 py-0.5 text-[10px]', tab === t.id ? 'bg-ink-700 text-fg' : 'text-fg-dim hover:text-fg-muted')}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      }
+      bodyClass="overflow-y-auto"
+    >
+      {tab === 'memory' &&
+        (memories === null ? (
+          <Empty>Cargando…</Empty>
+        ) : memories.length === 0 ? (
+          <Empty>
+            Sin memorias todavía. <Link href="/memory" className="underline hover:text-fg">Ver Memory ↗</Link>
+          </Empty>
+        ) : (
+          <div className="space-y-1.5 px-3 py-2.5 text-[11px]">
+            {memories.map((m) => (
+              <div key={m.id} className="border-b border-line pb-1.5 last:border-0 last:pb-0">
+                <div className="flex items-center gap-1.5 text-fg-dim">
+                  {m.pinned && <span title="fijada">📌</span>}
+                  <span className="rounded bg-ink-800 px-1 font-mono uppercase text-fg-muted">{m.type}</span>
+                  {m.agent_id && <span>{agentName(m.agent_id)}</span>}
+                </div>
+                <div className="truncate text-fg-muted">{m.summary || m.content}</div>
+              </div>
+            ))}
+            <Link href="/memory" className="block pt-1 text-fg-dim underline hover:text-fg">
+              Ver todas ↗
+            </Link>
+          </div>
+        ))}
+
+      {tab === 'knowledge' &&
+        (docs === null ? (
+          <Empty>Cargando…</Empty>
+        ) : docs.length === 0 ? (
+          <Empty>
+            Sin documentos. <Link href="/knowledge" className="underline hover:text-fg">Ver Knowledge ↗</Link>
+          </Empty>
+        ) : (
+          <div className="space-y-1.5 px-3 py-2.5 text-[11px]">
+            {docs.map((d) => (
+              <div key={d.id} className="flex items-center gap-1.5 truncate">
+                <span className="rounded bg-ink-800 px-1 text-[10px] text-fg-dim">{d.category || '—'}</span>
+                <span className="truncate text-fg-muted">{d.title}</span>
+              </div>
+            ))}
+            <Link href="/knowledge" className="block pt-1 text-fg-dim underline hover:text-fg">
+              Ver todo ↗
+            </Link>
+          </div>
+        ))}
+
+      {tab === 'router' &&
+        (routing === null ? (
+          <Empty>Cargando…</Empty>
+        ) : (
+          <div className="space-y-1.5 px-3 py-2.5 text-[11px]">
+            {routing.map((r) => (
+              <div key={r.capability} className="flex items-center justify-between gap-2">
+                <span className="text-fg-dim">{ROUTING_LABEL[r.capability]}</span>
+                <span className="font-mono text-fg-muted">{r.resolved_agent ?? '—'}</span>
+              </div>
+            ))}
+            <Link href="/agents" className="block pt-1 text-fg-dim underline hover:text-fg">
+              Configurar router en Ajustes del proyecto ↗
+            </Link>
+          </div>
+        ))}
     </Panel>
   );
 }

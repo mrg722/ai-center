@@ -70,6 +70,13 @@ export interface CtxKnowledge {
   category: string;
   content: string;
 }
+export interface CtxDefinition {
+  name: string;
+  identity: string;
+  mission: string;
+  /** Pre-rendered instructions of the definition's SELECTED skills only. */
+  skillsInstructions: string;
+}
 export interface CtxReview {
   reviewer: string;
   verdict: string;
@@ -88,6 +95,7 @@ export interface RenderInput {
   decisions: CtxDecision[];
   memories: CtxMemory[];
   knowledge: CtxKnowledge[];
+  definition: CtxDefinition | null;
   reviews: CtxReview[];
   workspace: WorkspaceState | null;
   protocolHelp: string | null; // for hosted agents (action blocks)
@@ -153,6 +161,23 @@ export function renderContext(i: RenderInput): ContextPackage {
       `- Be concise. Report what you did, what changed (files), and what should happen next.`,
     ].join('\n'),
   });
+
+  if (i.definition) {
+    const d = i.definition;
+    sections.push({
+      name: 'definition',
+      priority: 97,
+      minChars: 4000,
+      body: [
+        `## Your specialization: ${d.name}`,
+        d.identity ? `### Identity\n${clip(d.identity, 2500)}` : '',
+        d.mission ? `### Mission\n${clip(d.mission, 2500)}` : '',
+        d.skillsInstructions ? `### Skills (use these procedures/knowledge for this specialization)\n${clip(d.skillsInstructions, 6000)}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
+    });
+  }
 
   if (i.incoming) {
     sections.push({
@@ -298,7 +323,7 @@ export function fitBudget(sections: Section[], budget: number): ContextPackage {
     }
   }
   // keep a stable, readable order
-  const display = ['identity', 'protocol', 'rules', 'task', 'incoming', 'reviews', 'git', 'conversation', 'team', 'memory', 'knowledge'];
+  const display = ['identity', 'protocol', 'definition', 'rules', 'task', 'incoming', 'reviews', 'git', 'conversation', 'team', 'memory', 'knowledge'];
   const kept = sections.filter((s) => s.body).sort((a, b) => display.indexOf(a.name) - display.indexOf(b.name));
   const incomingIdx = kept.findIndex((s) => s.name === 'incoming');
   if (incomingIdx >= 0) kept.push(kept.splice(incomingIdx, 1)[0]);

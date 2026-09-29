@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { userRoute, readJson } from '@/server/http/route';
 import { userActor } from '@/server/auth/session';
-import { memoryCreateSchema } from '@/server/validation';
+import { memoryCreateSchema, queryBool } from '@/server/validation';
 import { requireProject } from '@/server/orchestrator/repo';
 import { emit } from '@/server/events/bus';
 import { createMemory, listMemories } from '@/server/memory/store';
@@ -13,8 +13,8 @@ const querySchema = z.object({
   task_id: z.string().uuid().optional(),
   scope: z.enum(['global', 'project', 'agent', 'task', 'conversation']).optional(),
   type: z.string().optional(),
-  pinned: z.coerce.boolean().optional(),
-  archived: z.coerce.boolean().optional(),
+  pinned: queryBool,
+  archived: queryBool,
   q: z.string().optional(),
 });
 

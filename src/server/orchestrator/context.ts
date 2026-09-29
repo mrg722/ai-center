@@ -7,6 +7,8 @@ import { renderContext, summarizeMessages, type CtxMessage } from './context-ren
 import { ACTION_PROTOCOL_HELP } from './action-parser';
 import { relevantMemories } from '../memory/store';
 import { relevantKnowledge } from '../knowledge/store';
+import { loadDefinitionForContext } from '../registry/agent-definitions';
+import { renderSkillInstructions } from '../registry/skill-definitions';
 
 const HISTORY_WINDOW = 14;
 
@@ -21,7 +23,7 @@ export async function buildContext(
 ): Promise<ContextPackage> {
   const { project, agent, task, incoming } = i;
   const knowledgeQuery = [task?.title, task?.description, incoming?.content].filter(Boolean).join(' ').slice(0, 2000);
-  const [views, perms, session, docs, decisions, memories, knowledge] = await Promise.all([
+  const [views, perms, session, docs, decisions, memories, knowledge, definitionCtx] = await Promise.all([
     agentViews(db, project),
     effectivePermissions(db, agent.id),
     openSession(db, agent.id),
@@ -35,6 +37,7 @@ export async function buildContext(
     ),
     relevantMemories(db, { projectId: project.id, agentId: agent.id, taskId: task?.id, limit: 8 }),
     knowledgeQuery ? relevantKnowledge(db, { projectId: project.id, query: knowledgeQuery, limit: 5 }) : Promise.resolve([]),
+    agent.agent_definition_id ? loadDefinitionForContext(db, agent.agent_definition_id) : Promise.resolve(null),
   ]);
   const names = new Map(views.map((v) => [v.id, v.slug]));
 
@@ -90,6 +93,14 @@ export async function buildContext(
     decisions: decisions.rows,
     memories: memories.map((m) => ({ type: m.type, content: m.content, summary: m.summary, importance: m.importance })),
     knowledge: knowledge.map((k) => ({ title: k.document_title, category: k.category, content: k.content })),
+    definition: definitionCtx
+      ? {
+          name: definitionCtx.definition.name,
+          identity: definitionCtx.definition.identity,
+          mission: definitionCtx.definition.mission,
+          skillsInstructions: renderSkillInstructions(definitionCtx.skills, 2500),
+        }
+      : null,
     reviews,
     workspace: agent.transport === 'local-bridge' ? (session?.workspace ?? null) : null,
     protocolHelp:

@@ -66,19 +66,48 @@ function ProviderMark({ runtime, color }: { runtime: string; color?: string }) {
   return <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-[12px] font-bold" style={{ color: tone, borderColor: tone + '55', background: tone + '16' }}>{initial}</span>;
 }
 
-function Sidebar({ onNewChat, selectedAgent, onSelectAgent }: { onNewChat: () => void; selectedAgent: string; onSelectAgent: (id: string) => void }) {
+const TOOL_LINKS: { label: string; icon: string; href: string | null }[] = [
+  { label: 'Modelos', icon: 'cpu', href: '/agents' },
+  { label: 'Skills', icon: 'sparkles', href: '/skills' },
+  { label: 'Memory', icon: 'brain', href: '/memory' },
+  { label: 'Knowledge', icon: 'book', href: '/knowledge' },
+  // No backend yet — never a dead click pretending otherwise (see NAV comment above).
+  { label: 'Security Lab', icon: 'shield', href: null },
+  { label: 'Reports', icon: 'chart', href: null },
+];
+
+function Sidebar({
+  onNewChat,
+  selectedAgent,
+  onSelectAgent,
+  selectedTask,
+  onSelectTask,
+}: {
+  onNewChat: () => void;
+  selectedAgent: string;
+  onSelectAgent: (id: string) => void;
+  selectedTask: string | null;
+  onSelectTask: (id: string | null) => void;
+}) {
   const { snap, connected } = useLive();
   const agents = snap?.agents ?? [];
+  // "Chats" = the general room + real tasks (each task has its own real
+  // conversation) — never placeholder thread names with no backend behind them.
+  const recentTasks = [...(snap?.tasks ?? [])].sort((a, b) => (a.key < b.key ? 1 : -1)).slice(0, 6);
   return <aside className="flex min-h-0 w-[268px] shrink-0 flex-col border-r border-[#202b38] bg-[#0b1017]">
     <div className="border-b border-[#202b38] p-3"><div className="mb-1 text-[10px] uppercase tracking-wide text-[#738196]">Proyecto actual</div>
       <div className="flex items-center justify-between rounded-lg border border-[#273343] bg-[#10161f] px-2.5 py-2"><div className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#18263a] text-[#5ea2ff]"><Icon name="cpu" size={15} /></span><span className="truncate text-[12px] font-semibold">{snap?.project.name ?? 'Cargando…'}</span></div><span className="text-[#7d8998]">⌄</span></div>
       <button onClick={onNewChat} className="mt-3 flex h-9 w-full items-center gap-2 rounded-lg bg-[#2563eb] px-3 text-[12px] font-semibold text-white transition hover:bg-[#3b82f6]"><Icon name="plus" size={15} /> Nuevo chat</button>
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto p-2">
-      <div className="mb-3"><div className="px-2 py-1 text-[10px] font-semibold tracking-[.13em] text-[#667488]">CHATS</div>{['Chat General','Security Team','Desarrollo Web','Análisis de Datos','Ideas / Brainstorm','Soporte'].map((label, i) => <button key={label} className={cx('flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px]', i === 0 ? 'bg-[#173a78] text-[#e8f1ff]' : 'text-[#9aa7b7] hover:bg-[#141d28]')}><Icon name="chat" size={14} /><span className="truncate">{label}</span></button>)}</div>
+      <div className="mb-3"><div className="px-2 py-1 text-[10px] font-semibold tracking-[.13em] text-[#667488]">CHATS</div>
+        <button onClick={onNewChat} className={cx('flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px]', selectedTask === null ? 'bg-[#173a78] text-[#e8f1ff]' : 'text-[#9aa7b7] hover:bg-[#141d28]')}><Icon name="chat" size={14} /><span className="truncate">Chat General</span></button>
+        {recentTasks.map((t) => <button key={t.id} onClick={() => onSelectTask(t.id)} className={cx('flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px]', selectedTask === t.id ? 'bg-[#173a78] text-[#e8f1ff]' : 'text-[#9aa7b7] hover:bg-[#141d28]')}><span className="shrink-0 font-mono text-[9px] text-[#657386]">{t.key}</span><span className="truncate">{t.title}</span></button>)}
+        {recentTasks.length === 0 && <div className="px-2.5 py-1 text-[10px] text-[#5c6b7e]">Sin tareas todavía.</div>}
+      </div>
       <div className="mb-3"><div className="px-2 py-1 text-[10px] font-semibold tracking-[.13em] text-[#667488]">AGENTS</div><button onClick={() => onSelectAgent('all')} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px] text-[#9aa7b7] hover:bg-[#141d28]"><Icon name="users" size={14} /> Todos los agentes</button>
         {agents.map((agent) => <button key={agent.id} onClick={() => onSelectAgent(agent.id)} className={cx('flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px]', selectedAgent === agent.id ? 'bg-[#17263b] text-white' : 'text-[#8d9aac] hover:bg-[#141d28]')}><AgentAvatar name={agent.name} color={agent.color} size={20} status={agent.status} /><span className="truncate">{agent.name}</span></button>)}</div>
-      <div><div className="px-2 py-1 text-[10px] font-semibold tracking-[.13em] text-[#667488]">TOOLS</div>{[['Modelos','cpu'],['Skills','sparkles'],['Memory','brain'],['Knowledge','book'],['Security Lab','shield'],['Reports','chart']].map(([label, icon]) => <button key={label} className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] text-[#8d9aac] hover:bg-[#141d28]"><Icon name={icon} size={14} />{label}</button>)}</div>
+      <div><div className="px-2 py-1 text-[10px] font-semibold tracking-[.13em] text-[#667488]">TOOLS</div>{TOOL_LINKS.map((t) => t.href ? <Link key={t.label} href={t.href} className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] text-[#8d9aac] hover:bg-[#141d28]"><Icon name={t.icon} size={14} />{t.label}</Link> : <span key={t.label} title="Todavía no tiene una sección propia implementada" className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] text-[#4a5568]"><Icon name={t.icon} size={14} />{t.label}</span>)}</div>
     </div>
     <div className="border-t border-[#202b38] p-3"><div className="mb-2 text-[10px] font-semibold tracking-[.13em] text-[#738196]">ESTADO DEL SISTEMA</div><div className="space-y-1.5">
       <div className="flex items-center gap-2 text-[11px] text-[#a0acba]"><span className={cx('h-2 w-2 rounded-full', connected ? 'bg-[#22c55e]' : 'bg-[#f59e0b]')} /> Live / SSE <span className="ml-auto text-[9px] text-[#657386]">{connected ? 'Online' : 'Reconnecting'}</span></div>
@@ -111,8 +140,8 @@ function Inspector({ runtimes, nvidia, agents, target, onTarget, activeRuntime, 
     {tab==='routes'&&<div className="space-y-1.5 p-2.5">{runtimes.map(r=><div key={r.id} className="flex items-center gap-2 rounded-lg border border-[#202b38] bg-[#10161f] p-2"><Icon name="route" size={15}/><div className="min-w-0 flex-1"><div className="truncate text-[10px] font-semibold">{r.label}</div><div className="truncate text-[9px] text-[#738196]">{r.capabilities.join(' · ')||'sin capacidades declaradas'}</div></div></div>)}</div>}
     <div id="memory" className="border-y border-[#202b38]"><SectionTitle number={2}>Contexto del Chat</SectionTitle><MiniTabs items={[{id:'memory',label:'Memory ('+memories.length+')'},{id:'knowledge',label:'Knowledge ('+knowledge.length+')'},{id:'files',label:'Archivos'}]} active={context} onChange={v=>setContext(v as ContextTab)}/></div>
     <div className="p-2.5">{loading?<div className="p-5 text-center text-[10px] text-[#687588]">Cargando contexto…</div>:context==='memory'?<div className="space-y-1.5">{memories.slice(0,5).map(m=><div key={m.id} className="rounded-lg border border-[#202b38] bg-[#10161f] p-2"><div className="flex items-center justify-between gap-2"><span className="truncate text-[10px] font-medium">{m.title??m.type}</span><span className="text-[9px] text-[#657386]">{timeAgo(m.created_at)}</span></div><div className="mt-1 line-clamp-2 text-[9px] text-[#8290a2]">{m.content??'Sin contenido'}</div></div>)}{memories.length===0&&<Empty>No hay memorias disponibles.</Empty>}</div>:context==='knowledge'?<div className="space-y-1.5">{knowledge.slice(0,5).map(d=><div key={d.id} className="rounded-lg border border-[#202b38] bg-[#10161f] p-2"><div className="truncate text-[10px] font-medium">{d.title??d.name??'Documento'}</div><div className="mt-1 text-[9px] text-[#8290a2]">{d.category??d.source??'Fuente no indicada'} · {d.status??'disponible'}</div></div>)}{knowledge.length===0&&<Empty>No hay documentos disponibles.</Empty>}</div>:<Empty>Los archivos disponibles se muestran en los mensajes y tareas reales.</Empty>}</div>
-    <div className="border-y border-[#202b38]"><SectionTitle number={3}>Skills Activas</SectionTitle><div className="flex flex-wrap gap-1.5 px-2.5 pb-2.5">{skills.length?skills.slice(0,12).map(s=><span key={s.slug} className="rounded-full border border-[#283a50] bg-[#111c2a] px-2 py-1 text-[9px] text-[#9fb8d8]">{s.slug}</span>):<span className="text-[10px] text-[#687588]">No hay skills disponibles.</span>}</div><Link href="/settings" className="mx-2.5 mb-2.5 flex items-center justify-center rounded-md border border-[#273343] px-2 py-1.5 text-[10px] text-[#8290a2] hover:bg-[#151d28]">Gestionar skills →</Link></div>
-    <div className="border-t border-[#202b38]"><SectionTitle number={4}>Ejecución y Herramientas</SectionTitle><div className="grid grid-cols-2 gap-2 p-2.5"><Button size="sm" variant="primary" aria-label="Abrir creador de tarea" onClick={onCreateTask}><Icon name="plus" size={13}/> Crear Task</Button><Button size="sm" variant="ghost" disabled title="La ejecución directa de skills requiere la integración de herramientas existente."><Icon name="sparkles" size={13}/> Ejecutar Skill</Button><Button size="sm" variant="danger" disabled title="Security Lab/Strix requiere Bridge y allowlist configurados."><Icon name="shield" size={13}/> Security Lab</Button><Button size="sm" variant="default" disabled title="El generador de reportes no está expuesto como acción desde el dashboard."><Icon name="chart" size={13}/> Generar Reporte</Button></div></div>
+    <div className="border-y border-[#202b38]"><SectionTitle number={3}>Skills Activas</SectionTitle><div className="flex flex-wrap gap-1.5 px-2.5 pb-2.5">{skills.length?skills.slice(0,12).map(s=><span key={s.slug} className="rounded-full border border-[#283a50] bg-[#111c2a] px-2 py-1 text-[9px] text-[#9fb8d8]">{s.slug}</span>):<span className="text-[10px] text-[#687588]">No hay skills disponibles.</span>}</div><Link href="/skills" className="mx-2.5 mb-2.5 flex items-center justify-center rounded-md border border-[#273343] px-2 py-1.5 text-[10px] text-[#8290a2] hover:bg-[#151d28]">Gestionar skills →</Link></div>
+    <div className="border-t border-[#202b38]"><SectionTitle number={4}>Ejecución y Herramientas</SectionTitle><div className="grid grid-cols-2 gap-2 p-2.5"><Button size="sm" variant="primary" aria-label="Abrir creador de tarea" onClick={onCreateTask}><Icon name="plus" size={13}/> Crear Task</Button><Link href="/skills" className="inline-flex h-7 items-center justify-center gap-1.5 rounded-md border border-line-strong bg-ink-800 px-2.5 text-xs font-medium text-fg hover:bg-ink-700"><Icon name="sparkles" size={13}/> Ejecutar Skill</Link><Button size="sm" variant="danger" disabled title="Security Lab/Strix requiere Bridge y allowlist de terceros — en pausa (ver docs/ARCHITECTURE_AI_PLATFORM.md)."><Icon name="shield" size={13}/> Security Lab</Button><Button size="sm" variant="default" disabled title="El generador de reportes llega junto con Findings/Security Lab."><Icon name="chart" size={13}/> Generar Reporte</Button></div></div>
   </aside>;
 }
 
@@ -142,7 +171,7 @@ export function RedesignedCommandCenter() {
   const selectedTask=snap?.tasks.find(t=>t.id===taskId)??null;
   return <div className="flex min-h-0 flex-1 flex-col bg-[#07090d]">
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      {sidebarOpen&&<Sidebar onNewChat={()=>{setTaskId(null);setTarget('all');setChatTab('chat')}} selectedAgent={target} onSelectAgent={setTarget}/>}
+      {sidebarOpen&&<Sidebar onNewChat={()=>{setTaskId(null);setTarget('all');setChatTab('chat')}} selectedAgent={target} onSelectAgent={setTarget} selectedTask={taskId} onSelectTask={id=>{setTaskId(id);const task=snap?.tasks.find(t=>t.id===id);if(task?.assigned_agent)setTarget(task.assigned_agent);setChatTab('chat')}}/>}
       <main className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center justify-between border-b border-[#202b38] bg-[#0b1017] px-3 py-1.5 lg:hidden"><button onClick={()=>setSidebarOpen(v=>!v)} className="rounded p-1.5 text-[#8b98a9]" aria-label="Abrir sidebar"><Icon name="users"/></button><span className="text-[11px] font-semibold">{snap?.project.name??'AI Center'}</span><button onClick={()=>setInspectorOpen(v=>!v)} className="rounded p-1.5 text-[#8b98a9]" aria-label="Abrir inspector"><Icon name="cpu"/></button></div>
         <div className="flex border-b border-[#202b38] lg:hidden" role="tablist" aria-label="Vista móvil"><button role="tab" aria-selected={chatTab==='chat'} onClick={()=>setChatTab('chat')} className={cx('flex-1 py-2 text-[10px]',chatTab==='chat'?'border-b-2 border-[#3b82f6] text-white':'text-[#718096]')}>Sala</button><button role="tab" aria-selected={chatTab==='agents'} onClick={()=>setChatTab('agents')} className={cx('flex-1 py-2 text-[10px]',chatTab==='agents'?'border-b-2 border-[#3b82f6] text-white':'text-[#718096]')}>Agentes</button><button role="tab" aria-selected={chatTab==='files'} onClick={()=>setChatTab('files')} className={cx('flex-1 py-2 text-[10px]',chatTab==='files'?'border-b-2 border-[#3b82f6] text-white':'text-[#718096]')}>Tareas</button><button role="tab" aria-selected={chatTab==='context'} onClick={()=>setChatTab('context')} className={cx('flex-1 py-2 text-[10px]',chatTab==='context'?'border-b-2 border-[#3b82f6] text-white':'text-[#718096]')}>Aprobaciones</button></div><ChatHeader tab={chatTab} onTab={setChatTab}/><ParticipantBar agents={snap?.agents??[]} target={target} onTarget={setTarget}/>
