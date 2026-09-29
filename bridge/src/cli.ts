@@ -2,13 +2,16 @@
 /**
  * acc-bridge — AI Command Center local Agent Bridge
  *
- *   acc-bridge run  [--url URL] [--token-file FILE] [--workspace DIR] [--runner claude-code|codex|command|echo]
- *   acc-bridge mcp  --url URL --token-file FILE [--task-id ID]   (started by the agent CLI, stdio)
+ *   acc-bridge run      [--url URL] [--token-file FILE] [--workspace DIR] [--runner claude-code|codex|command|echo]
+ *   acc-bridge security [--url URL] [--token-file FILE] [--workspace DIR]  (StrixRuntime adapter, requires Docker)
+ *   acc-bridge mcp      --url URL --token-file FILE [--task-id ID]   (started by the agent CLI, stdio)
  *   acc-bridge check                                            (validate config + runner)
  */
 import { loadConfig } from './config.js';
 import { BridgeWorker, makeRunner, BRIDGE_VERSION } from './worker.js';
 import { runMcpServer } from './mcp-server.js';
+import { OrchestratorClient } from './client.js';
+import { startStrixWorker } from './security/strix-worker.js';
 import { log, setLogLevel } from './log.js';
 
 async function main() {
@@ -34,6 +37,11 @@ async function main() {
       process.exit(1);
     }
     log.info(`Config OK · runner ${cfg.runner} · workspace ${cfg.workspace} · orchestrator ${cfg.url}`);
+    return;
+  }
+  if (cmd === 'security') {
+    const client = new OrchestratorClient(cfg.url, cfg.token);
+    await startStrixWorker({ client, workspace: cfg.workspace, maxRunSeconds: cfg.maxRunSeconds });
     return;
   }
   if (cmd !== 'run') throw new Error(`Unknown command ${cmd}`);

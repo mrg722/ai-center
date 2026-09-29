@@ -10,9 +10,9 @@ import type { Mode, SystemState } from '@/shared/domain';
 import { Button, cx, StatusDot } from './ui';
 
 // Every entry with an href must resolve to a REAL page — never a dead nav
-// item. Security Lab/Reports have no backend yet (Strix is paused pending
-// the third-party authorization model, see docs); they get an honest
-// disabled state (below) instead of a fake destination.
+// item. Reports has no backend yet (it needs Security Lab findings history
+// to aggregate over); it gets an honest disabled state (below) instead of a
+// fake destination.
 const NAV: { href: string | null; label: string; icon: string }[] = [
   { href: '/', label: 'Chat', icon: 'M4 5h16v11H8l-4 4V5Z' },
   { href: '/agents', label: 'Agents', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87' },
@@ -20,7 +20,8 @@ const NAV: { href: string | null; label: string; icon: string }[] = [
   { href: '/memory', label: 'Memory', icon: 'M9.5 3a3 3 0 0 0-3 3v.3A3.5 3.5 0 0 0 4 12a3.5 3.5 0 0 0 2.5 5.7V18a3 3 0 0 0 3 3h1v-7H9a2 2 0 0 1 0-4h1V3h-.5Z' },
   { href: '/knowledge', label: 'Knowledge', icon: 'M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22V4.5ZM4 18h16' },
   { href: '/office', label: 'AI Office', icon: 'M4 21V9l8-6 8 6v12M9 21v-6h6v6' },
-  { href: null, label: 'Security Lab', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z' },
+  { href: '/security', label: 'Security Lab', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z' },
+  { href: '/findings', label: 'Findings', icon: 'M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z' },
   { href: '/projects', label: 'Projects', icon: 'm3 7 3-3h5l2 2h8v14H3V7Z' },
   { href: null, label: 'Reports', icon: 'M4 19V5M4 19h17M8 16v-4M12 16V8M16 16v-7M20 16v-4' },
   { href: '/settings', label: 'Settings', icon: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z' },
