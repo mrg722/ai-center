@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decide, agentCanSetStatus, type PolicyInput } from '@/server/orchestrator/policy';
 import { parseAgentReply } from '@/server/orchestrator/action-parser';
 import { renderContext, fitBudget, untrusted, summarizeMessages, type RenderInput } from '@/server/orchestrator/context-render';
-import { validateAgentAction } from '@/server/validation';
+import { validateAgentAction, queryBool } from '@/server/validation';
 import { hashPassword, verifyPassword, sign, unsign, verifyGithubSignature, newAgentToken, sha256 } from '@/server/security/crypto';
 import { rateLimit } from '@/server/security/rate-limit';
 import { isApiKeyEnvAllowed } from '@/server/env';
@@ -237,5 +237,24 @@ describe('security primitives', () => {
     expect(isApiKeyEnvAllowed('SESSION_SECRET')).toBe(false);
     expect(isApiKeyEnvAllowed('DATABASE_URL')).toBe(false);
     expect(isApiKeyEnvAllowed('GITHUB_TOKEN')).toBe(false);
+  });
+});
+
+describe('queryBool (query-string boolean parsing)', () => {
+  // Regression: z.coerce.boolean() runs JS Boolean(value) on the raw string,
+  // and Boolean("false") is `true` — a real bug found in GET /api/memory
+  // (?archived=false silently returned only ARCHIVED memories).
+  it('parses the literal strings "true"/"false" correctly, unlike Boolean(str)', () => {
+    expect(queryBool.parse('false')).toBe(false);
+    expect(queryBool.parse('true')).toBe(true);
+    expect(Boolean('false')).toBe(true); // <- the footgun this guards against
+  });
+  it('is undefined when the param is absent, not false', () => {
+    expect(queryBool.parse(undefined)).toBeUndefined();
+  });
+  it('rejects anything else rather than silently coercing it', () => {
+    expect(() => queryBool.parse('0')).toThrow();
+    expect(() => queryBool.parse('')).toThrow();
+    expect(() => queryBool.parse('yes')).toThrow();
   });
 });

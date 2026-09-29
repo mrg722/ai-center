@@ -190,3 +190,84 @@ export interface Flight {
   type: string;
   at: number;
 }
+
+/* ───────────────────────────── Agent Registry / Skill Registry (catalogue) */
+export interface AgentDefinitionView {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  division: string;
+  identity: string;
+  mission: string;
+  workflows: string[];
+  deliverables: string;
+  instructions: string;
+  source: 'custom' | 'agency-agents';
+  source_repo: string | null;
+  source_path: string | null;
+  source_version: string | null;
+  customized: boolean;
+  enabled: boolean;
+  skills: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SkillDefinitionView {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  instructions: string;
+  version: string;
+  source: 'custom' | 'agency-agents' | 'strix';
+  required_tools: string[];
+  security_level: 'standard' | 'elevated' | 'restricted';
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/* ───────────────────────────── Memory Store */
+export interface MemoryView {
+  id: string;
+  scope: 'global' | 'project' | 'agent' | 'task' | 'conversation';
+  project_id: string | null;
+  agent_id: string | null;
+  task_id: string | null;
+  type: string;
+  content: string;
+  summary: string;
+  importance: number;
+  source: 'user' | 'agent' | 'system' | 'extraction';
+  pinned: boolean;
+  archived: boolean;
+  embedding_model: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/* ───────────────────────────── Knowledge Store */
+export interface KnowledgeDocumentView {
+  id: string;
+  scope: 'global' | 'project';
+  title: string;
+  source: string;
+  path: string | null;
+  category: string;
+  version: string;
+  checksum: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/* ───────────────────────────── Model Router */
+export interface RoutingEntry {
+  capability: 'simple' | 'code' | 'research' | 'security' | 'reasoning';
+  configured_slug: string | null;
+  resolved_agent: string | null;
+}
