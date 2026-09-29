@@ -8,6 +8,8 @@ import { addStep, postMessage } from './router';
 import { BadRequest, effectivePermissions, getAgentBySlug, getProjectById, getTask, listAgentRows } from './repo';
 import { createTask, patchTask, setStatus } from './tasks';
 import { createPullRequest, dispatchWorkflow, mergePullRequest } from '../github/client';
+import { createMemory } from '../memory/store';
+import { resolveAgentForCapability } from '../providers/router';
 
 export function agentActor(a: AgentRow): Actor {
   return { kind: 'agent', id: a.id, slug: a.slug, name: a.name };
@@ -357,6 +359,32 @@ export async function executeAgentAction(db: Db, agent: AgentRow, action: AgentA
       return { ok: true, outcome: 'done' };
     }
 
+    case 'remember': {
+      const task = await loadTask(db, project, action.task_id, false);
+      const scope = action.scope ?? (task ? 'task' : 'project');
+      const memory = await createMemory(db, {
+        scope,
+        project_id: project.id,
+        agent_id: scope === 'agent' ? agent.id : undefined,
+        task_id: scope === 'task' ? (task?.id ?? undefined) : undefined,
+        type: action.type,
+        content: action.content,
+        summary: action.summary,
+        importance: action.importance,
+        source: 'agent',
+        created_by_agent: agent.id,
+      });
+      await emit(db, {
+        project_id: project.id,
+        type: 'memory.created',
+        actor,
+        task_id: task?.id ?? null,
+        agent_id: agent.id,
+        payload: { memory_id: memory.id, type: memory.type, scope: memory.scope },
+      });
+      return { ok: true, outcome: 'done' };
+    }
+
     case 'git_request': {
       const task = (await loadTask(db, project, action.task_id, true))!;
       const pa: PolicyAction = action.op === 'pr_create' ? 'pr_create' : action.op;
@@ -438,7 +466,11 @@ export async function executeAgentAction(db: Db, agent: AgentRow, action: AgentA
       const d = gate(await policyFor(db, project, agent, 'create_task', parent));
       if (d.kind === 'deny') return { ok: false, outcome: 'denied', reason: d.reason };
       if (d.kind === 'approval') return hold(db, project, agent, parent, d, action, `Create sub-task "${action.title}" under ${parent.key}`);
-      const assignee = action.assign_to ? await resolveTarget(db, project, action.assign_to) : null;
+      const assignee = action.assign_to
+        ? await resolveTarget(db, project, action.assign_to)
+        : action.capability
+          ? await resolveAgentForCapability(db, project, action.capability)
+          : null;
       const t = await createTask(db, {
         project,
         actor,

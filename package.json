@@ -17,7 +17,8 @@
     "test:e2e": "npm run build && npm run bridge:build && playwright test",
     "bridge:build": "npm --prefix bridge run build",
     "setup:env": "node scripts/setup-env.mjs",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "registry:import:agency": "node scripts/import-agency-agents.mjs"
   },
   "overrides": {
     "postcss": "^8.5.28"

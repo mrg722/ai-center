@@ -7,6 +7,7 @@ import { emit } from '@/server/events/bus';
 import { getAgentBySlug, requireProject } from '@/server/orchestrator/repo';
 import { seedPermissions } from '@/server/orchestrator/moderator';
 import { getRuntime } from '@/server/providers/registry';
+import { describeRouting } from '@/server/providers/router';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,7 @@ export const dynamic = 'force-dynamic';
 export const GET = userRoute(async ({ db, user }) => {
   const runtimes = describeRuntimes();
   const project = await requireProject(db);
+  const modelRouting = await describeRouting(db, project);
   let agent = await getAgentBySlug(db, project.id, 'nvidia');
 
   if (!agent) {
@@ -60,6 +62,7 @@ export const GET = userRoute(async ({ db, user }) => {
   if (!configured) {
     return {
       runtimes,
+      model_routing: modelRouting,
       nvidia: { configured: false, models: [], total: 0, providers: [] as string[], agent: agent ? { id: agent.id, model: agent.model } : null },
     };
   }
@@ -81,6 +84,7 @@ export const GET = userRoute(async ({ db, user }) => {
     }
     return {
       runtimes,
+      model_routing: modelRouting,
       nvidia: {
         configured: true,
         models,
@@ -93,6 +97,7 @@ export const GET = userRoute(async ({ db, user }) => {
   } catch (e) {
     return {
       runtimes,
+      model_routing: modelRouting,
       nvidia: {
         configured: true,
         models: [],

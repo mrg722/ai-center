@@ -5,6 +5,8 @@ import { env } from '../env';
 import { agentViews, effectivePermissions, openSession } from './repo';
 import { renderContext, summarizeMessages, type CtxMessage } from './context-render';
 import { ACTION_PROTOCOL_HELP } from './action-parser';
+import { relevantMemories } from '../memory/store';
+import { relevantKnowledge } from '../knowledge/store';
 
 const HISTORY_WINDOW = 14;
 
@@ -18,7 +20,8 @@ export async function buildContext(
   i: { project: ProjectRow; agent: AgentRow; task: TaskRow | null; incoming: MessageRow | null },
 ): Promise<ContextPackage> {
   const { project, agent, task, incoming } = i;
-  const [views, perms, session, docs, decisions] = await Promise.all([
+  const knowledgeQuery = [task?.title, task?.description, incoming?.content].filter(Boolean).join(' ').slice(0, 2000);
+  const [views, perms, session, docs, decisions, memories, knowledge] = await Promise.all([
     agentViews(db, project),
     effectivePermissions(db, agent.id),
     openSession(db, agent.id),
@@ -30,6 +33,8 @@ export async function buildContext(
       `select title, decision from decisions where project_id=$1 and status='accepted' order by created_at desc limit 10`,
       [project.id],
     ),
+    relevantMemories(db, { projectId: project.id, agentId: agent.id, taskId: task?.id, limit: 8 }),
+    knowledgeQuery ? relevantKnowledge(db, { projectId: project.id, query: knowledgeQuery, limit: 5 }) : Promise.resolve([]),
   ]);
   const names = new Map(views.map((v) => [v.id, v.slug]));
 
@@ -83,6 +88,8 @@ export async function buildContext(
     olderSummary,
     docs: docs.rows,
     decisions: decisions.rows,
+    memories: memories.map((m) => ({ type: m.type, content: m.content, summary: m.summary, importance: m.importance })),
+    knowledge: knowledge.map((k) => ({ title: k.document_title, category: k.category, content: k.content })),
     reviews,
     workspace: agent.transport === 'local-bridge' ? (session?.workspace ?? null) : null,
     protocolHelp:

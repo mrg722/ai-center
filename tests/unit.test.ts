@@ -139,6 +139,8 @@ describe('context manager', () => {
     olderSummary: '',
     docs: [{ kind: 'rule', title: 'Git safety', content: 'Never force push' }],
     decisions: [],
+    memories: [],
+    knowledge: [],
     reviews: [],
     workspace: { branch: 'df-001', commit: 'abc1234def', dirty_files: ['src/auth.ts'] },
     protocolHelp: null,

@@ -59,6 +59,17 @@ export interface CtxDecision {
   title: string;
   decision: string;
 }
+export interface CtxMemory {
+  type: string;
+  content: string;
+  summary: string;
+  importance: number;
+}
+export interface CtxKnowledge {
+  title: string;
+  category: string;
+  content: string;
+}
 export interface CtxReview {
   reviewer: string;
   verdict: string;
@@ -75,6 +86,8 @@ export interface RenderInput {
   olderSummary: string; // summary of messages not included in history
   docs: CtxDoc[];
   decisions: CtxDecision[];
+  memories: CtxMemory[];
+  knowledge: CtxKnowledge[];
   reviews: CtxReview[];
   workspace: WorkspaceState | null;
   protocolHelp: string | null; // for hosted agents (action blocks)
@@ -234,7 +247,7 @@ export function renderContext(i: RenderInput): ContextPackage {
       body: `## Project rules\n${rules.map((d) => `### ${d.title}\n${clip(d.content, 2000)}`).join('\n')}`,
     });
   }
-  if (knowledge.length || i.decisions.length) {
+  if (knowledge.length || i.decisions.length || i.memories.length) {
     sections.push({
       name: 'memory',
       priority: 40,
@@ -242,7 +255,23 @@ export function renderContext(i: RenderInput): ContextPackage {
       body:
         `## Project memory\n` +
         knowledge.map((d) => `### ${d.title} (${d.kind})\n${clip(d.content, 1500)}`).join('\n') +
-        (i.decisions.length ? `\n### Accepted decisions\n${i.decisions.map((d) => `- ${d.title}: ${clip(d.decision, 300)}`).join('\n')}` : ''),
+        (i.decisions.length ? `\n### Accepted decisions\n${i.decisions.map((d) => `- ${d.title}: ${clip(d.decision, 300)}`).join('\n')}` : '') +
+        (i.memories.length
+          ? `\n### Remembered (agent/task memory, model-independent)\n${i.memories
+              .map((m) => `- [${m.type}] ${clip(m.summary || m.content, 400)}`)
+              .join('\n')}`
+          : ''),
+    });
+  }
+
+  if (i.knowledge.length) {
+    sections.push({
+      name: 'knowledge',
+      priority: 45,
+      minChars: 0,
+      body: `## Relevant knowledge (reference material, not memory)\n${i.knowledge
+        .map((k) => `### ${k.title}${k.category ? ` (${k.category})` : ''}\n${clip(k.content, 1200)}`)
+        .join('\n')}`,
     });
   }
 
@@ -269,7 +298,7 @@ export function fitBudget(sections: Section[], budget: number): ContextPackage {
     }
   }
   // keep a stable, readable order
-  const display = ['identity', 'protocol', 'rules', 'task', 'incoming', 'reviews', 'git', 'conversation', 'team', 'memory'];
+  const display = ['identity', 'protocol', 'rules', 'task', 'incoming', 'reviews', 'git', 'conversation', 'team', 'memory', 'knowledge'];
   const kept = sections.filter((s) => s.body).sort((a, b) => display.indexOf(a.name) - display.indexOf(b.name));
   const incomingIdx = kept.findIndex((s) => s.name === 'incoming');
   if (incomingIdx >= 0) kept.push(kept.splice(incomingIdx, 1)[0]);

@@ -105,7 +105,17 @@ export const agentActionSchema = z.discriminatedUnion('action', [
     title: text(300).min(1),
     description: text(20_000),
     assign_to: slugRef.optional(),
+    capability: z.enum(['simple', 'code', 'research', 'security', 'reasoning']).optional(),
     priority: z.enum(PRIORITIES).optional(),
+  }),
+  z.object({
+    action: z.literal('remember'),
+    task_id: id.optional(),
+    type: z.enum(['episodic', 'semantic', 'project', 'decision', 'preference', 'fact', 'lesson', 'security_finding', 'task_state']),
+    content: text(20_000).min(1),
+    summary: text(2000).optional(),
+    importance: z.number().int().min(1).max(5).optional(),
+    scope: z.enum(['project', 'agent', 'task']).optional(),
   }),
 ]);
 
@@ -251,6 +261,7 @@ export const projectUpdateSchema = z.object({
   default_reviewer: z.string().max(40).optional(),
   daily_token_budget: z.number().int().min(0).max(100_000_000).optional(),
   deploy_workflow: z.string().regex(/^[\w.-]+\.ya?ml$/).or(z.literal('')).optional(),
+  model_routing: z.record(z.enum(['simple', 'code', 'research', 'security', 'reasoning']), z.string().max(40)).optional(),
   tool_servers: z
     .array(
       z.object({
@@ -307,6 +318,34 @@ export const agentControlSchema = z.discriminatedUnion('op', [
   }),
   z.object({ op: z.literal('revoke_temporary'), action: z.enum(PERMISSION_ACTIONS) }),
 ]);
+
+export const memoryCreateSchema = z.object({
+  scope: z.enum(['global', 'project', 'agent', 'task', 'conversation']),
+  agent_id: id.optional(),
+  task_id: id.optional(),
+  type: z.enum(['episodic', 'semantic', 'project', 'decision', 'preference', 'fact', 'lesson', 'security_finding', 'task_state']),
+  content: text(20_000).min(1),
+  summary: text(2000).optional(),
+  importance: z.number().int().min(1).max(5).default(3),
+  pinned: z.boolean().default(false),
+});
+
+export const memoryUpdateSchema = z.object({
+  content: text(20_000).optional(),
+  summary: text(2000).optional(),
+  importance: z.number().int().min(1).max(5).optional(),
+  pinned: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
+
+export const knowledgeCreateSchema = z.object({
+  title: text(300).min(1),
+  content: text(200_000).min(1),
+  category: text(80).default(''),
+  version: text(40).default('1.0.0'),
+  source: text(80).default('custom'),
+  path: text(500).optional(),
+});
 
 export const contextDocSchema = z.object({
   kind: z.enum(['rule', 'architecture', 'documentation', 'glossary', 'note', 'result']),

@@ -18,6 +18,7 @@ export const PATCH = userRoute(
       ...(body.default_reviewer !== undefined ? { default_reviewer: body.default_reviewer } : {}),
       ...(body.daily_token_budget !== undefined ? { daily_token_budget: body.daily_token_budget } : {}),
       ...(body.deploy_workflow !== undefined ? { deploy_workflow: body.deploy_workflow || undefined } : {}),
+      ...(body.model_routing !== undefined ? { model_routing: body.model_routing } : {}),
     };
     await db.query(
       `update projects set name=coalesce($2,name), description=coalesce($3,description), repo_owner=$4, repo_name=$5,
