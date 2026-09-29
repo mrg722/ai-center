@@ -59,6 +59,12 @@ export interface CtxDecision {
   title: string;
   decision: string;
 }
+export interface CtxMemory {
+  type: string;
+  content: string;
+  summary: string;
+  importance: number;
+}
 export interface CtxReview {
   reviewer: string;
   verdict: string;
@@ -75,6 +81,7 @@ export interface RenderInput {
   olderSummary: string; // summary of messages not included in history
   docs: CtxDoc[];
   decisions: CtxDecision[];
+  memories: CtxMemory[];
   reviews: CtxReview[];
   workspace: WorkspaceState | null;
   protocolHelp: string | null; // for hosted agents (action blocks)
@@ -234,7 +241,7 @@ export function renderContext(i: RenderInput): ContextPackage {
       body: `## Project rules\n${rules.map((d) => `### ${d.title}\n${clip(d.content, 2000)}`).join('\n')}`,
     });
   }
-  if (knowledge.length || i.decisions.length) {
+  if (knowledge.length || i.decisions.length || i.memories.length) {
     sections.push({
       name: 'memory',
       priority: 40,
@@ -242,7 +249,12 @@ export function renderContext(i: RenderInput): ContextPackage {
       body:
         `## Project memory\n` +
         knowledge.map((d) => `### ${d.title} (${d.kind})\n${clip(d.content, 1500)}`).join('\n') +
-        (i.decisions.length ? `\n### Accepted decisions\n${i.decisions.map((d) => `- ${d.title}: ${clip(d.decision, 300)}`).join('\n')}` : ''),
+        (i.decisions.length ? `\n### Accepted decisions\n${i.decisions.map((d) => `- ${d.title}: ${clip(d.decision, 300)}`).join('\n')}` : '') +
+        (i.memories.length
+          ? `\n### Remembered (agent/task memory, model-independent)\n${i.memories
+              .map((m) => `- [${m.type}] ${clip(m.summary || m.content, 400)}`)
+              .join('\n')}`
+          : ''),
     });
   }
 

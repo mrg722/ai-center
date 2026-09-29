@@ -107,6 +107,15 @@ export const agentActionSchema = z.discriminatedUnion('action', [
     assign_to: slugRef.optional(),
     priority: z.enum(PRIORITIES).optional(),
   }),
+  z.object({
+    action: z.literal('remember'),
+    task_id: id.optional(),
+    type: z.enum(['episodic', 'semantic', 'project', 'decision', 'preference', 'fact', 'lesson', 'security_finding', 'task_state']),
+    content: text(20_000).min(1),
+    summary: text(2000).optional(),
+    importance: z.number().int().min(1).max(5).optional(),
+    scope: z.enum(['project', 'agent', 'task']).optional(),
+  }),
 ]);
 
 export function validateAgentAction(input: unknown): { ok: true; action: AgentAction } | { ok: false; error: string } {
@@ -307,6 +316,25 @@ export const agentControlSchema = z.discriminatedUnion('op', [
   }),
   z.object({ op: z.literal('revoke_temporary'), action: z.enum(PERMISSION_ACTIONS) }),
 ]);
+
+export const memoryCreateSchema = z.object({
+  scope: z.enum(['global', 'project', 'agent', 'task', 'conversation']),
+  agent_id: id.optional(),
+  task_id: id.optional(),
+  type: z.enum(['episodic', 'semantic', 'project', 'decision', 'preference', 'fact', 'lesson', 'security_finding', 'task_state']),
+  content: text(20_000).min(1),
+  summary: text(2000).optional(),
+  importance: z.number().int().min(1).max(5).default(3),
+  pinned: z.boolean().default(false),
+});
+
+export const memoryUpdateSchema = z.object({
+  content: text(20_000).optional(),
+  summary: text(2000).optional(),
+  importance: z.number().int().min(1).max(5).optional(),
+  pinned: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 
 export const contextDocSchema = z.object({
   kind: z.enum(['rule', 'architecture', 'documentation', 'glossary', 'note', 'result']),

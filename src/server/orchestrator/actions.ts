@@ -8,6 +8,7 @@ import { addStep, postMessage } from './router';
 import { BadRequest, effectivePermissions, getAgentBySlug, getProjectById, getTask, listAgentRows } from './repo';
 import { createTask, patchTask, setStatus } from './tasks';
 import { createPullRequest, dispatchWorkflow, mergePullRequest } from '../github/client';
+import { createMemory } from '../memory/store';
 
 export function agentActor(a: AgentRow): Actor {
   return { kind: 'agent', id: a.id, slug: a.slug, name: a.name };
@@ -354,6 +355,32 @@ export async function executeAgentAction(db: Db, agent: AgentRow, action: AgentA
         content: `Decision proposed: ${action.title}\n\n${action.decision}${action.rationale ? `\n\nWhy: ${action.rationale}` : ''}`,
       });
       await emit(db, { project_id: project.id, type: 'decision.created', actor, task_id: task?.id ?? null, payload: { title: action.title } });
+      return { ok: true, outcome: 'done' };
+    }
+
+    case 'remember': {
+      const task = await loadTask(db, project, action.task_id, false);
+      const scope = action.scope ?? (task ? 'task' : 'project');
+      const memory = await createMemory(db, {
+        scope,
+        project_id: project.id,
+        agent_id: scope === 'agent' ? agent.id : undefined,
+        task_id: scope === 'task' ? (task?.id ?? undefined) : undefined,
+        type: action.type,
+        content: action.content,
+        summary: action.summary,
+        importance: action.importance,
+        source: 'agent',
+        created_by_agent: agent.id,
+      });
+      await emit(db, {
+        project_id: project.id,
+        type: 'memory.created',
+        actor,
+        task_id: task?.id ?? null,
+        agent_id: agent.id,
+        payload: { memory_id: memory.id, type: memory.type, scope: memory.scope },
+      });
       return { ok: true, outcome: 'done' };
     }
 

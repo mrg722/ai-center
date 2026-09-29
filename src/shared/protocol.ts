@@ -252,6 +252,17 @@ export type AgentAction =
       description: string;
       assign_to?: string;
       priority?: Priority;
+    }
+  | {
+      // persists a relevant fact/lesson/decision/state to the Memory Store —
+      // never a bulk copy of the conversation, only what's worth keeping.
+      action: 'remember';
+      task_id?: string;
+      type: 'episodic' | 'semantic' | 'project' | 'decision' | 'preference' | 'fact' | 'lesson' | 'security_finding' | 'task_state';
+      content: string;
+      summary?: string;
+      importance?: number; // 1-5
+      scope?: 'project' | 'agent' | 'task';
     };
 
 export type ActionOutcome = 'done' | 'delivered' | 'held_for_approval' | 'denied' | 'error';
