@@ -11,8 +11,8 @@ import type { MessageType } from '@/shared/domain';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // these routes trigger after(() => drainHostedQueue()), which calls a real provider and can take a while (non-streamed, large-model completions)
 
-export const GET = userRoute(async ({ req, db }) => {
-  const project = await requireProject(db);
+export const GET = userRoute(async ({ req, db, user }) => {
+  const project = await requireProject(db, user.id);
   const sp = req.nextUrl.searchParams;
   const task = sp.get('task');
   const messages = await listMessages(db, project, {
@@ -28,7 +28,7 @@ export const GET = userRoute(async ({ req, db }) => {
 /** Moderator writes into the room: to one agent, to all agents, or a note. */
 export const POST = userRoute(async ({ req, db, user }) => {
   const body = await readJson(req, userMessageSchema);
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   const task = body.task_id ? await findTask(db, project.id, body.task_id) : null;
   if (body.to !== 'room' && body.to !== 'all') {
     const a = await getAgent(db, body.to);

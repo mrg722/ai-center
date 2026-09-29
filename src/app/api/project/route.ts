@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const PATCH = userRoute(
   async ({ req, db, user }) => {
     const body = await readJson(req, projectUpdateSchema);
-    const project = await requireProject(db);
+    const project = await requireProject(db, user.id);
     const [owner, name] = body.repo === undefined ? [project.repo_owner, project.repo_name] : body.repo ? body.repo.split('/') : [null, null];
     const settings = {
       ...project.settings,

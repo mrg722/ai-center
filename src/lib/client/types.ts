@@ -277,3 +277,16 @@ export interface RoutingEntry {
   configured_slug: string | null;
   resolved_agent: string | null;
 }
+
+/* ───────────────────────────── Projects (multi-project) */
+export interface ProjectListItem {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  repo_owner: string | null;
+  repo_name: string | null;
+  default_branch: string;
+  mode: Mode;
+  created_at: string;
+}

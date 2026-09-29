@@ -19,9 +19,9 @@ const querySchema = z.object({
 });
 
 /** Memory Store dashboard: view/filter memories by scope, agent, task, type, importance, source. */
-export const GET = userRoute(async ({ req, db }) => {
+export const GET = userRoute(async ({ req, db, user }) => {
   const q = querySchema.parse(Object.fromEntries(new URL(req.url).searchParams));
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   const memories = await listMemories(db, {
     projectId: project.id,
     agentId: q.agent_id,
@@ -39,7 +39,7 @@ export const GET = userRoute(async ({ req, db }) => {
 /** Moderator can also persist a memory directly (not only via an agent's `remember` action). */
 export const POST = userRoute(async ({ req, db, user }) => {
   const body = await readJson(req, memoryCreateSchema);
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   const memory = await createMemory(db, {
     ...body,
     project_id: project.id,

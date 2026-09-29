@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const db = await getDb();
   const user = await getSessionUser(db);
   if (!user) return new Response('unauthorized', { status: 401 });
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
 
   const lastIdHeader = req.headers.get('last-event-id') ?? req.nextUrl.searchParams.get('after');
   let cursor = Number(lastIdHeader ?? 0);

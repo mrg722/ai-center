@@ -35,7 +35,7 @@ async function fresh() {
     default_branch: 'main',
   });
   user.id = s.userId;
-  project = await requireProject(db);
+  project = await requireProject(db, user.id);
   claude = (await getAgentBySlug(db, project.id, 'claude'))!;
   gpt = (await getAgentBySlug(db, project.id, 'gpt'))!;
   gemini = (await getAgentBySlug(db, project.id, 'gemini'))!;
@@ -56,7 +56,7 @@ describe('model router', () => {
 
   it('operator configuration (project.settings.model_routing) wins over the default role mapping', async () => {
     await db.query(`update projects set settings = settings || '{"model_routing":{"code":"gemini"}}'::jsonb where id=$1`, [project.id]);
-    const reloaded = await requireProject(db);
+    const reloaded = await requireProject(db, user.id);
     const resolved = await resolveAgentForCapability(db, reloaded, 'code');
     expect(resolved?.slug).toBe('gemini');
   });
@@ -75,7 +75,7 @@ describe('model router', () => {
 
   it('create_subtask with a capability (no assign_to) is routed through the Model Router', async () => {
     await setMode(db, project, { kind: 'user', id: user.id, name: user.name }, 'SUPERVISED');
-    project = await requireProject(db);
+    project = await requireProject(db, user.id);
     const parent = await db.query<{ id: string }>(
       `insert into tasks (project_id, key, seq, title, status, requires_human_approval)
        values ($1,'DF-900',900,'Parent','OPEN',false) returning id`,

@@ -175,6 +175,7 @@ export interface UserRow {
   password_hash: string;
   role: 'owner' | 'moderator' | 'viewer';
   session_version: number;
+  current_project_id: string | null;
 }
 
 export type Actor =

@@ -58,32 +58,26 @@ export async function needsSetup(db: Db): Promise<boolean> {
   return r.rows[0].n === 0;
 }
 
-export async function runSetup(
-  db: Db,
-  i: {
-    email: string;
-    display_name: string;
-    password: string;
-    project_name: string;
-    project_key: string;
-    repo?: string;
-    default_branch: string;
-  },
-): Promise<{ userId: string; project: ProjectRow }> {
-  return db.tx(async (tx) => {
-    const exists = await tx.query<{ n: number }>('select count(*)::int as n from users');
-    if (exists.rows[0].n > 0) throw Object.assign(new Error('Setup already completed'), { status: 409 });
-    const user = await tx.query<{ id: string }>(
-      `insert into users (email, display_name, password_hash, role) values ($1,$2,$3,'owner') returning id`,
-      [i.email.toLowerCase(), i.display_name, await hashPassword(i.password)],
-    );
-    const userId = user.rows[0].id;
-    const [owner, name] = i.repo ? i.repo.split('/') : [null, null];
+/**
+ * Everything a project needs to be immediately usable: the default agent
+ * roster (Claude/GPT/NVIDIA/Gemini), their permissions, the default rules.
+ * Shared by first-run setup (runSetup) and creating an additional project
+ * later (createProject) — one project should never be less ready than the
+ * other.
+ */
+export async function bootstrapProject(
+  tx: Db,
+  i: { project_name: string; project_key: string; repo?: string; default_branch: string },
+  ownerUserId: string,
+  ownerDisplayName: string,
+): Promise<ProjectRow> {
+  const [owner, name] = i.repo ? i.repo.split('/') : [null, null];
     const p = await tx.query<ProjectRow>(
       `insert into projects (key, name, repo_owner, repo_name, default_branch, settings) values ($1,$2,$3,$4,$5,$6) returning *`,
       [i.project_key, i.project_name, owner, name, i.default_branch || 'main', JSON.stringify({ tool_servers: DEFAULT_TOOL_SERVERS, default_reviewer: 'gpt', daily_token_budget: 500_000 })],
     );
     const project = p.rows[0];
+    const userId = ownerUserId;
     await generalConversation(tx, project.id);
 
     const agents = [
@@ -156,7 +150,46 @@ export async function runSetup(
         userId,
       ]);
     }
-    await emit(tx, { project_id: project.id, type: 'project.created', actor: { kind: 'user', id: userId, name: i.display_name }, payload: {} });
+    await emit(tx, { project_id: project.id, type: 'project.created', actor: { kind: 'user', id: userId, name: ownerDisplayName }, payload: {} });
+    return project;
+}
+
+export async function runSetup(
+  db: Db,
+  i: {
+    email: string;
+    display_name: string;
+    password: string;
+    project_name: string;
+    project_key: string;
+    repo?: string;
+    default_branch: string;
+  },
+): Promise<{ userId: string; project: ProjectRow }> {
+  return db.tx(async (tx) => {
+    const exists = await tx.query<{ n: number }>('select count(*)::int as n from users');
+    if (exists.rows[0].n > 0) throw Object.assign(new Error('Setup already completed'), { status: 409 });
+    const user = await tx.query<{ id: string }>(
+      `insert into users (email, display_name, password_hash, role) values ($1,$2,$3,'owner') returning id`,
+      [i.email.toLowerCase(), i.display_name, await hashPassword(i.password)],
+    );
+    const userId = user.rows[0].id;
+    const project = await bootstrapProject(tx, i, userId, i.display_name);
+    await tx.query('update users set current_project_id=$2 where id=$1', [userId, project.id]);
     return { userId, project };
+  });
+}
+
+/** Creates an additional project (multi-project). Switches the creator's current project to it. */
+export async function createProject(
+  db: Db,
+  i: { project_name: string; project_key: string; repo?: string; default_branch: string },
+  creatorUserId: string,
+  creatorDisplayName: string,
+): Promise<ProjectRow> {
+  return db.tx(async (tx) => {
+    const project = await bootstrapProject(tx, i, creatorUserId, creatorDisplayName);
+    await tx.query('update users set current_project_id=$2 where id=$1', [creatorUserId, project.id]);
+    return project;
   });
 }

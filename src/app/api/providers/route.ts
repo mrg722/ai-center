@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 /** Runtime catalogue plus the live NVIDIA model catalogue. Secrets are never returned. */
 export const GET = userRoute(async ({ db, user }) => {
   const runtimes = describeRuntimes();
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   const modelRouting = await describeRouting(db, project);
   let agent = await getAgentBySlug(db, project.id, 'nvidia');
 

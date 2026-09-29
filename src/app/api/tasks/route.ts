@@ -9,8 +9,8 @@ import { drainHostedQueue } from '@/server/orchestrator/hosted';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // these routes trigger after(() => drainHostedQueue()), which calls a real provider and can take a while (non-streamed, large-model completions)
 
-export const GET = userRoute(async ({ req, db }) => {
-  const project = await requireProject(db);
+export const GET = userRoute(async ({ req, db, user }) => {
+  const project = await requireProject(db, user.id);
   const status = req.nextUrl.searchParams.get('status');
   const r = await db.query(
     `select id, key, title, status, priority, assigned_agent, parent_task_id, paused, updated_at, created_at
@@ -22,7 +22,7 @@ export const GET = userRoute(async ({ req, db }) => {
 
 export const POST = userRoute(async ({ req, db, user }) => {
   const body = await readJson(req, createTaskSchema);
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   if (body.assigned_agent) {
     const a = await getAgent(db, body.assigned_agent);
     if (a.project_id !== project.id) throw new HttpError(400, 'unknown agent');

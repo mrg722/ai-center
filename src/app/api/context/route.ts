@@ -7,8 +7,8 @@ import { emit } from '@/server/events/bus';
 export const dynamic = 'force-dynamic';
 
 /** Permanent memory: rules, architecture notes, documentation, decisions. */
-export const GET = userRoute(async ({ db }) => {
-  const project = await requireProject(db);
+export const GET = userRoute(async ({ db, user }) => {
+  const project = await requireProject(db, user.id);
   const [docs, decisions] = await Promise.all([
     db.query(`select * from project_context where project_id=$1 order by pinned desc, updated_at desc`, [project.id]),
     db.query(
@@ -22,7 +22,7 @@ export const GET = userRoute(async ({ db }) => {
 
 export const POST = userRoute(async ({ req, db, user }) => {
   const body = await readJson(req, contextDocSchema);
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   const r = await db.query<{ id: string }>(
     `insert into project_context (project_id, kind, title, content, pinned, updated_by) values ($1,$2,$3,$4,$5,$6) returning id`,
     [project.id, body.kind, body.title, body.content, body.pinned, user.id],

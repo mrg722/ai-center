@@ -31,8 +31,7 @@ async function fresh() {
     repo: 'acme/web',
     default_branch: 'main',
   });
-  void s;
-  project = await requireProject(db);
+  project = await requireProject(db, s.userId);
 }
 
 describe('agent workspace: definition → skills → context', () => {

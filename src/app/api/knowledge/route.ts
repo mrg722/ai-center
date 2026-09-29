@@ -11,9 +11,9 @@ export const dynamic = 'force-dynamic';
 const querySchema = z.object({ category: z.string().optional() });
 
 /** Knowledge library: documents, sources, categories, chunking/embedding status. */
-export const GET = userRoute(async ({ req, db }) => {
+export const GET = userRoute(async ({ req, db, user }) => {
   const q = querySchema.parse(Object.fromEntries(new URL(req.url).searchParams));
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   const [documents, stats] = await Promise.all([
     listKnowledgeDocuments(db, { projectId: project.id, category: q.category }),
     knowledgeStats(db, project.id),
@@ -24,7 +24,7 @@ export const GET = userRoute(async ({ req, db }) => {
 export const POST = userRoute(
   async ({ req, db, user }) => {
     const body = await readJson(req, knowledgeCreateSchema);
-    const project = await requireProject(db);
+    const project = await requireProject(db, user.id);
     const { document, chunks } = await createKnowledgeDocument(db, { ...body, scope: 'project', project_id: project.id });
     await emit(db, { project_id: project.id, type: 'knowledge.created', actor: userActor(user), payload: { document_id: document.id, chunks: chunks.length } });
     return { document, chunks: chunks.length };

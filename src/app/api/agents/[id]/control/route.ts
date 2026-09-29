@@ -20,7 +20,7 @@ export const maxDuration = 300; // these routes trigger after(() => drainHostedQ
 export const POST = userRoute<{ id: string }>(
   async ({ req, db, user, params }) => {
     const body = await readJson(req, agentControlSchema);
-    const project = await requireProject(db);
+    const project = await requireProject(db, user.id);
     const agent = await getAgent(db, params.id);
     if (agent.project_id !== project.id) throw new HttpError(404, 'agent not found');
     const actor = userActor(user);

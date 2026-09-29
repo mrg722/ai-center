@@ -16,7 +16,7 @@ async function ownedMemory(db: Db, projectId: string, id: string) {
 
 export const PATCH = userRoute<{ id: string }>(async ({ req, db, user, params }) => {
   const body = await readJson(req, memoryUpdateSchema);
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   await ownedMemory(db, project.id, params.id);
   const memory = await updateMemory(db, params.id, body);
   await emit(db, { project_id: project.id, type: 'memory.updated', actor: userActor(user), payload: { memory_id: params.id } });
@@ -24,7 +24,7 @@ export const PATCH = userRoute<{ id: string }>(async ({ req, db, user, params })
 });
 
 export const DELETE = userRoute<{ id: string }>(async ({ db, user, params }) => {
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   await ownedMemory(db, project.id, params.id);
   await deleteMemory(db, params.id);
   await emit(db, { project_id: project.id, type: 'memory.updated', actor: userActor(user), payload: { memory_id: params.id, deleted: true } });

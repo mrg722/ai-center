@@ -216,6 +216,17 @@ export const setupSchema = z.object({
   default_branch: z.string().max(100).default('main'),
 });
 
+export const projectCreateSchema = z.object({
+  project_name: text(80).min(1),
+  project_key: z.string().regex(/^[A-Z][A-Z0-9]{1,9}$/, '2–10 uppercase letters/digits, starting with a letter'),
+  repo: z
+    .string()
+    .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, 'owner/name')
+    .optional()
+    .or(z.literal('')),
+  default_branch: z.string().max(100).default('main'),
+});
+
 export const createTaskSchema = z.object({
   title: text(300).min(1),
   description: text(50_000).default(''),

@@ -12,8 +12,8 @@ import { drainHostedQueue } from '@/server/orchestrator/hosted';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // these routes trigger after(() => drainHostedQueue()), which calls a real provider and can take a while (non-streamed, large-model completions)
 
-export const GET = userRoute<{ id: string }>(async ({ db, params }) => {
-  const project = await requireProject(db);
+export const GET = userRoute<{ id: string }>(async ({ db, user, params }) => {
+  const project = await requireProject(db, user.id);
   const task = await findTask(db, project.id, params.id);
   return taskDetail(db, project, task);
 });
@@ -21,7 +21,7 @@ export const GET = userRoute<{ id: string }>(async ({ db, params }) => {
 /** Moderator control over a task. */
 export const POST = userRoute<{ id: string }>(async ({ req, db, user, params }) => {
   const body = await readJson(req, taskControlSchema);
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   const task = await findTask(db, project.id, params.id);
   const actor = userActor(user);
   const agentOf = async (id: string) => {
