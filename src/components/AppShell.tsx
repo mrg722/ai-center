@@ -117,7 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         its own ConversationRoom manages an internal scroller — so this never
         double-scrolls there; it's what actually fixes "the chat grows the whole
         page" instead of scrolling in place. */}
-    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</main>
+    <main className={cx("flex min-h-0 flex-1 flex-col", path === "/" ? "overflow-hidden" : "overflow-y-auto")}>{children}</main>
     <StatusStrip/>
   </div>;
 }
