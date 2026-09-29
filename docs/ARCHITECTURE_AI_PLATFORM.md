@@ -63,12 +63,24 @@ personalizaciones locales (`customized = true` se respeta y no se sobrescribe en
 - **Knowledge** (bloque 6): tabla `knowledge_documents` con chunking + `embedding` opcional +
   `embedding_model`, retrieval con fallback estructurado/texto cuando no hay embeddings.
 
-## 4. Strix (bloque 9, más adelante)
+## 4. Security Lab / Strix (bloque 9) — implementado
 
-Se integra como un `bridgeRunner` adicional en `bridge/src/runners/` (patrón idéntico a
-`claude-code.ts`/`codex.ts`), invocado únicamente vía Local Bridge, nunca desde Vercel. Un
-`StrixRuntime` adapter en el orquestador traduce una tarea de seguridad en comandos controlados
-(start/status/output/findings/stop) con `TEST_TARGET_ALLOWLIST`.
+`engagements` es el registro de autorización (target + evidencia + `authorized_by` + vigencia
+`starts_at`/`ends_at`); un `security_run` solo puede crearse contra un engagement con
+`status='active'` y dentro de su vigencia — ese es el `TEST_TARGET_ALLOWLIST`, verificado en
+`src/server/security/store.ts` (`assertEngagementAuthorizesRun`), no solo en la UI. Los
+`findings` cuelgan de cada run.
+
+`bridge/src/security/strix-worker.ts` es el `StrixRuntime` adapter — no un `Runner` del loop de
+tareas por agente (un security run no es un turno de conversación), sino un worker standalone
+(`acc-bridge security`) que hace poll de `/api/security/runs/queued`, reclama un run
+(`/claim`), ejecuta el CLI real de Strix (`strix --target … --non-interactive --scan-mode …`,
+requiere Docker) y reporta (`/report`) con los findings que pueda parsear de forma best-effort
+(Strix no documenta un schema de findings). Igual que `claude-code.ts`/`codex.ts`: solo se invoca
+desde el Local Bridge del operador, nunca desde Vercel/infra hosteada.
+
+UI: `/security` (engagements + runs), `/security/runs/[id]` (detalle + findings), `/findings`
+(listado global con filtros).
 
 ## 5. Orden de trabajo real (difiere del prompt maestro donde ya hay reuso)
 

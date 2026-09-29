@@ -2,6 +2,7 @@ import { userRoute } from '@/server/http/route';
 import { describeRuntimes } from '@/server/providers/registry';
 import { readApiKey } from '@/server/env';
 import { listNvidiaModels, resolveNvidiaModel } from '@/server/providers/nvidia';
+import { getOpenRouterKeyStatus, listOpenRouterModels } from '@/server/providers/openrouter';
 import { userActor } from '@/server/auth/session';
 import { emit } from '@/server/events/bus';
 import { getAgentBySlug, requireProject } from '@/server/orchestrator/repo';
@@ -11,11 +12,25 @@ import { describeRouting } from '@/server/providers/router';
 
 export const dynamic = 'force-dynamic';
 
+/** Free-tier catalogue + usage/limit status — same shape regardless of whether OPENROUTER_API_KEY is set (the model list is public; only key_status needs the key). Best-effort: never throws, so it can't take down the rest of /api/providers. */
+async function openRouterPayload(): Promise<{ configured: boolean; models: { id: string; name?: string; context_length?: number }[]; total: number; key_status: Awaited<ReturnType<typeof getOpenRouterKeyStatus>>; error?: string }> {
+  const configured = Boolean(readApiKey('OPENROUTER_API_KEY'));
+  try {
+    const all = await listOpenRouterModels();
+    const free = all.filter((m) => m.free);
+    const key_status = configured ? await getOpenRouterKeyStatus() : null;
+    return { configured, models: free, total: free.length, key_status };
+  } catch (e) {
+    return { configured, models: [], total: 0, key_status: null, error: e instanceof Error ? e.message.slice(0, 300) : 'OpenRouter catalogue request failed' };
+  }
+}
+
 /** Runtime catalogue plus the live NVIDIA model catalogue. Secrets are never returned. */
 export const GET = userRoute(async ({ db, user }) => {
   const runtimes = describeRuntimes();
   const project = await requireProject(db, user.id);
   const modelRouting = await describeRouting(db, project);
+  const openrouter = await openRouterPayload();
   let agent = await getAgentBySlug(db, project.id, 'nvidia');
 
   if (!agent) {
@@ -63,6 +78,7 @@ export const GET = userRoute(async ({ db, user }) => {
     return {
       runtimes,
       model_routing: modelRouting,
+      openrouter,
       nvidia: { configured: false, models: [], total: 0, providers: [] as string[], agent: agent ? { id: agent.id, model: agent.model } : null },
     };
   }
@@ -85,6 +101,7 @@ export const GET = userRoute(async ({ db, user }) => {
     return {
       runtimes,
       model_routing: modelRouting,
+      openrouter,
       nvidia: {
         configured: true,
         models,
@@ -98,6 +115,7 @@ export const GET = userRoute(async ({ db, user }) => {
     return {
       runtimes,
       model_routing: modelRouting,
+      openrouter,
       nvidia: {
         configured: true,
         models: [],

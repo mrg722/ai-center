@@ -84,4 +84,23 @@ export class OrchestratorClient {
   commandResult(body: { approval_id?: string; task_id: string; command: string; ok: boolean; output: string; commit?: string; branch?: string }) {
     return this.req<{ ok: true }>('POST', '/api/bridge/command-result', body);
   }
+
+  /* Security Lab (Bloque 9) — StrixRuntime adapter only, never called from anywhere else. */
+  queuedSecurityRuns() {
+    return this.req<{ runs: { id: string; target: string; scan_mode: string }[] }>('GET', '/api/security/runs/queued');
+  }
+  claimSecurityRun(id: string, bridgeRunName?: string) {
+    return this.req<{ run: { id: string } }>('POST', `/api/security/runs/${encodeURIComponent(id)}/claim`, { bridge_run_name: bridgeRunName });
+  }
+  reportSecurityRun(
+    id: string,
+    body: {
+      status: 'completed' | 'failed';
+      summary: string;
+      error: string;
+      findings: { title: string; severity: string; description?: string; evidence?: string; location?: string; raw?: Record<string, unknown> }[];
+    },
+  ) {
+    return this.req<{ run: { id: string } }>('POST', `/api/security/runs/${encodeURIComponent(id)}/report`, body, 120_000);
+  }
 }

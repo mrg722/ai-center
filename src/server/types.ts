@@ -23,6 +23,8 @@ export interface ProjectRow {
   halted_at: string | null;
   max_auto_hops: number;
   settings: ProjectSettings;
+  /** Security Lab second-factor PIN (scrypt-hashed, see src/server/security/pin.ts). Null = never set, Security Lab stays locked. */
+  security_pin_hash: string | null;
   created_at: string;
   updated_at: string;
 }

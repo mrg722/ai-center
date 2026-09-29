@@ -243,8 +243,6 @@ export const userMessageSchema = z.object({
   content: text(60_000).min(1),
   priority: z.enum(PRIORITIES).default('NORMAL'),
   reply_to: id.nullable().optional(),
-  /** Per-message model override; currently supported by the NVIDIA multimodel agent. */
-  model: z.string().trim().min(1).max(200).optional(),
 });
 
 export const taskControlSchema = z.discriminatedUnion('op', [
@@ -379,6 +377,55 @@ export const contextDocSchema = z.object({
 });
 
 export const decisionUpdateSchema = z.object({ status: z.enum(['accepted', 'superseded', 'proposed']) });
+
+export const engagementCreateSchema = z.object({
+  target: text(300).min(1),
+  target_type: z.enum(['repo', 'url', 'host']).default('repo'),
+  scope_notes: text(4000).default(''),
+  authorization_evidence: text(4000).min(1, 'describe or link the written authorization for this target'),
+  authorized_by: text(200).min(1),
+  starts_at: z.string().datetime().optional(),
+  ends_at: z.string().datetime().optional(),
+});
+
+export const engagementStatusSchema = z.object({ status: z.enum(['draft', 'active', 'expired', 'revoked']) });
+
+export const securityRunCreateSchema = z
+  .object({
+    engagement_id: id.optional(),
+    /** Owner-only fast path — see getOrCreateOwnerEngagement in src/server/security/store.ts. */
+    target: text(300).optional(),
+    target_type: z.enum(['repo', 'url', 'host']).default('repo'),
+    scan_mode: z.enum(['quick', 'standard', 'deep']).default('standard'),
+  })
+  .refine((v) => v.engagement_id || v.target, { message: 'engagement_id or target is required' });
+
+export const securityPinSetSchema = z.object({ pin: z.string().min(8).max(200), current_pin: z.string().max(200).optional() });
+export const securityPinUnlockSchema = z.object({ pin: z.string().min(1).max(200) });
+
+export const findingStatusSchema = z.object({ status: z.enum(['open', 'confirmed', 'false_positive', 'fixed']) });
+
+/** StrixRuntime bridge adapter — never called from anywhere but the Local Bridge. */
+export const securityRunClaimSchema = z.object({ bridge_run_name: text(200).optional() });
+
+export const securityRunReportSchema = z.object({
+  status: z.enum(['completed', 'failed']),
+  summary: text(8000).default(''),
+  error: text(8000).default(''),
+  findings: z
+    .array(
+      z.object({
+        title: text(300).min(1),
+        severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).default('info'),
+        description: text(8000).default(''),
+        evidence: text(8000).default(''),
+        location: text(500).default(''),
+        raw: z.record(z.string(), z.unknown()).default({}),
+      }),
+    )
+    .max(500)
+    .default([]),
+});
 
 export const systemControlSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('stop_all'), reason: text(500).default('') }),

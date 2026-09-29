@@ -278,6 +278,46 @@ export interface RoutingEntry {
   resolved_agent: string | null;
 }
 
+/* ───────────────────────────── Security Lab (Bloque 9) */
+export interface EngagementView {
+  id: string;
+  target: string;
+  target_type: 'repo' | 'url' | 'host';
+  scope_notes: string;
+  authorization_evidence: string;
+  authorized_by: string;
+  status: 'draft' | 'active' | 'expired' | 'revoked';
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+}
+
+export interface SecurityRunView {
+  id: string;
+  engagement_id: string;
+  target: string;
+  scan_mode: 'quick' | 'standard' | 'deep';
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'stopped';
+  bridge_run_name: string | null;
+  summary: string;
+  error: string;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface FindingView {
+  id: string;
+  security_run_id: string;
+  title: string;
+  severity: 'info' | 'low' | 'medium' | 'high' | 'critical';
+  description: string;
+  evidence: string;
+  location: string;
+  status: 'open' | 'confirmed' | 'false_positive' | 'fixed';
+  created_at: string;
+}
+
 /* ───────────────────────────── Projects (multi-project) */
 export interface ProjectListItem {
   id: string;
