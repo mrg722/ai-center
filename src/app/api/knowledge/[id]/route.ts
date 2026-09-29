@@ -6,8 +6,8 @@ import { deleteKnowledgeDocument, getKnowledgeChunks, getKnowledgeDocument, setK
 
 export const dynamic = 'force-dynamic';
 
-export const GET = userRoute<{ id: string }>(async ({ db, params }) => {
-  const project = await requireProject(db);
+export const GET = userRoute<{ id: string }>(async ({ db, user, params }) => {
+  const project = await requireProject(db, user.id);
   const document = await getKnowledgeDocument(db, params.id);
   if (document.scope === 'project' && document.project_id !== project.id) throw new HttpError(404, 'document not found');
   const chunks = await getKnowledgeChunks(db, document.id);
@@ -17,7 +17,7 @@ export const GET = userRoute<{ id: string }>(async ({ db, params }) => {
 export const PATCH = userRoute<{ id: string }>(
   async ({ req, db, user, params }) => {
     const body = (await req.json().catch(() => ({}))) as { enabled?: boolean };
-    const project = await requireProject(db);
+    const project = await requireProject(db, user.id);
     const document = await getKnowledgeDocument(db, params.id);
     if (document.scope === 'project' && document.project_id !== project.id) throw new HttpError(404, 'document not found');
     const updated = typeof body.enabled === 'boolean' ? await setKnowledgeDocumentEnabled(db, params.id, body.enabled) : document;
@@ -29,7 +29,7 @@ export const PATCH = userRoute<{ id: string }>(
 
 export const DELETE = userRoute<{ id: string }>(
   async ({ db, user, params }) => {
-    const project = await requireProject(db);
+    const project = await requireProject(db, user.id);
     const document = await getKnowledgeDocument(db, params.id);
     if (document.scope === 'project' && document.project_id !== project.id) throw new HttpError(404, 'document not found');
     await deleteKnowledgeDocument(db, params.id);

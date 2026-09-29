@@ -40,14 +40,14 @@ async function fresh() {
     default_branch: 'main',
   });
   user.id = s.userId;
-  project = await requireProject(db);
+  project = await requireProject(db, user.id);
   claude = (await getAgentBySlug(db, project.id, 'claude'))!;
   gpt = (await getAgentBySlug(db, project.id, 'gpt'))!;
   gemini = (await getAgentBySlug(db, project.id, 'gemini'))!;
 }
 
 const reload = async () => {
-  project = await requireProject(db);
+  project = await requireProject(db, user.id);
   claude = (await getAgentBySlug(db, project.id, 'claude'))!;
   gpt = (await getAgentBySlug(db, project.id, 'gpt'))!;
 };

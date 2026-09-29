@@ -17,12 +17,30 @@ export class Conflict extends Error {
 }
 
 /* ───────────────────────────── projects */
+
+/** No user context available (webhooks, cron) — the oldest project. Keep using
+ *  requireProject(db, userId) everywhere a moderator session exists. */
 export async function getCurrentProject(db: Db): Promise<ProjectRow | null> {
   const r = await db.query<ProjectRow>('select * from projects order by created_at asc limit 1');
   return r.rows[0] ?? null;
 }
 
-export async function requireProject(db: Db): Promise<ProjectRow> {
+/**
+ * Resolves the CALLING USER's current project (multi-project support):
+ * `users.current_project_id` when set and still valid, else the oldest
+ * project (keeps single-project installs — and installs mid-migration —
+ * working with zero setup). `userId` is required so every call site is
+ * forced through the switch-aware path; nothing should silently keep
+ * assuming "there is only one project".
+ */
+export async function requireProject(db: Db, userId: string): Promise<ProjectRow> {
+  const r = await db.query<ProjectRow>(
+    `select p.* from users u join projects p on p.id = u.current_project_id where u.id=$1`,
+    [userId],
+  );
+  if (r.rows[0]) return r.rows[0];
+  // unset, or points at a project that no longer exists — fall back to the
+  // oldest project rather than 404ing a user who never touched the switcher.
   const p = await getCurrentProject(db);
   if (!p) throw new NotFound('No project configured yet. Complete /setup first.');
   return p;
@@ -32,6 +50,21 @@ export async function getProjectById(db: Db, id: string): Promise<ProjectRow> {
   const r = await db.query<ProjectRow>('select * from projects where id=$1', [id]);
   if (!r.rows[0]) throw new NotFound('project not found');
   return r.rows[0];
+}
+
+/** All projects, most recently created first — for the /projects switcher. */
+export async function listProjects(db: Db): Promise<ProjectRow[]> {
+  return (await db.query<ProjectRow>('select * from projects order by created_at desc')).rows;
+}
+
+export async function getProjectByKey(db: Db, key: string): Promise<ProjectRow | null> {
+  const r = await db.query<ProjectRow>('select * from projects where key=$1', [key]);
+  return r.rows[0] ?? null;
+}
+
+export async function setCurrentProject(db: Db, userId: string, projectId: string): Promise<void> {
+  await getProjectById(db, projectId); // 404s if it doesn't exist
+  await db.query('update users set current_project_id=$2 where id=$1', [userId, projectId]);
 }
 
 /* ───────────────────────────── agents */

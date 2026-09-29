@@ -9,8 +9,8 @@ import { emit } from '@/server/events/bus';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = userRoute(async ({ db }) => {
-  const project = await requireProject(db);
+export const GET = userRoute(async ({ db, user }) => {
+  const project = await requireProject(db, user.id);
   return { agents: await agentViews(db, project), runtimes: describeRuntimes() };
 });
 
@@ -18,7 +18,7 @@ export const GET = userRoute(async ({ db }) => {
 export const POST = userRoute(
   async ({ req, db, user }) => {
     const body = await readJson(req, agentUpsertSchema);
-    const project = await requireProject(db);
+    const project = await requireProject(db, user.id);
     const config = body.config ?? {};
     const role = body.role ?? 'GENERIC';
     const provider = getRuntime(body.runtime);

@@ -12,7 +12,7 @@ export const maxDuration = 300; // these routes trigger after(() => drainHostedQ
 /** STOP ALL / RESUME / mode switch. */
 export const POST = userRoute(async ({ req, db, user }) => {
   const body = await readJson(req, systemControlSchema);
-  const project = await requireProject(db);
+  const project = await requireProject(db, user.id);
   const actor = userActor(user);
   if (body.op === 'stop_all') await stopAll(db, project, actor, body.reason ?? '');
   else if (body.op === 'resume_all') {

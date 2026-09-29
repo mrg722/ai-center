@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export const PATCH = userRoute<{ id: string }>(
   async ({ req, db, user, params }) => {
     const body = await readJson(req, agentUpsertSchema.partial());
-    const project = await requireProject(db);
+    const project = await requireProject(db, user.id);
     const agent = await getAgent(db, params.id);
     if (agent.project_id !== project.id) throw new HttpError(404, 'agent not found');
     const provider = getRuntime(body.runtime ?? agent.runtime);
