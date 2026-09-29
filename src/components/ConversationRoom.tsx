@@ -42,6 +42,12 @@ export function ConversationRoom({
   const { snap, messageTick, activity, statusTick, refresh } = useLive();
   const agents = useAgentMap();
   const [messages, setMessages] = useState<MessageView[]>([]);
+  // Optimistic local echo of the moderator's own send — the real round trip
+  // (POST -> emit -> SSE -> incremental fetch) can take a visible beat, so
+  // "does my message show up" shouldn't depend on it. Cleared as soon as any
+  // real message.created event arrives (the incremental fetch below picks up
+  // the real row at the same time).
+  const [pending, setPending] = useState<MessageView[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
@@ -84,7 +90,16 @@ export function ConversationRoom({
   useEffect(() => {
     const el = scroller.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  }, [messages, pending]);
+
+  // the real row lands in `messages` via the incremental fetch above, triggered
+  // by the same messageTick — safe to drop the optimistic echo right away.
+  useEffect(() => {
+    if (messageTick) setPending([]);
+  }, [messageTick]);
+
+  const addPending = useCallback((m: MessageView) => setPending((p) => [...p, m]), []);
+  const failPending = useCallback((id: string) => setPending((p) => p.filter((m) => m.id !== id)), []);
 
   async function loadOlder() {
     const first = messages[0]?.seq;
@@ -142,13 +157,13 @@ export function ConversationRoom({
           </div>
         )}
         {loading && <Empty>Cargando conversación…</Empty>}
-        {!loading && !messages.length && (
+        {!loading && !messages.length && !pending.length && (
           <Empty>
             {taskId ? 'Aún no hay mensajes en esta tarea.' : 'La sala está vacía. Crea una tarea o escribe a un agente para empezar.'}
           </Empty>
         )}
-        {messages.map((m, i) => (
-          <MessageRow key={m.id} m={m} prev={messages[i - 1]} agents={agents} pendingApproval={Boolean(m.meta.approval_id && pendingApprovalIds.has(String(m.meta.approval_id)))} showTask={!taskId} />
+        {[...messages, ...pending].map((m, i, all) => (
+          <MessageRow key={m.id} m={m} prev={all[i - 1]} agents={agents} pendingApproval={Boolean(m.meta.approval_id && pendingApprovalIds.has(String(m.meta.approval_id)))} showTask={!taskId} sending={m.id.startsWith('pending-')} />
         ))}
         {working.map((a) => (
           <div key={a.id} className="flex items-center gap-2 px-2 py-1.5 text-xs text-fg-dim">
@@ -159,7 +174,7 @@ export function ConversationRoom({
           </div>
         ))}
       </div>
-      <Composer taskId={taskId} taskKey={taskKey} target={target} onTargetChange={onTargetChange} compact={compact} />
+      <Composer taskId={taskId} taskKey={taskKey} target={target} onTargetChange={onTargetChange} compact={compact} onOptimisticSend={addPending} onOptimisticFail={failPending} />
     </div>
   );
 }
@@ -174,12 +189,14 @@ const MessageRow = memo(function MessageRow({
   agents,
   pendingApproval,
   showTask,
+  sending,
 }: {
   m: MessageView;
   prev?: MessageView;
   agents: ReturnType<typeof useAgentMap>;
   pendingApproval: boolean;
   showTask: boolean;
+  sending?: boolean;
 }) {
   const from = m.from_kind === 'agent' ? agents.get(m.from_agent ?? '') : null;
   const to = m.to_agent ? agents.get(m.to_agent) : null;
@@ -209,6 +226,7 @@ const MessageRow = memo(function MessageRow({
         m.message_type === 'APPROVAL_REQUEST' && pendingApproval && 'border-l-2 border-accent bg-accent-soft/40',
         m.message_type === 'ERROR' && 'border-l-2 border-st-error/60',
         isCommand && 'opacity-70',
+        sending && 'opacity-60',
       )}
       data-type={m.message_type}
     >
@@ -229,9 +247,13 @@ const MessageRow = memo(function MessageRow({
               EN COLA · {to.name} sin bridge
             </span>
           )}
-          <time className="ml-auto text-[10px] text-fg-dim" dateTime={m.created_at}>
-            {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </time>
+          {sending ? (
+            <span className="ml-auto animate-pulse-soft font-mono text-[10px] text-fg-dim">enviando…</span>
+          ) : (
+            <time className="ml-auto text-[10px] text-fg-dim" dateTime={m.created_at}>
+              {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </time>
+          )}
         </header>
       )}
       <div className={cx('pl-7', isCommand && 'font-mono text-xs')}>
@@ -272,12 +294,16 @@ const Composer = memo(function Composer({
   target,
   onTargetChange,
   compact,
+  onOptimisticSend,
+  onOptimisticFail,
 }: {
   taskId: string | null;
   taskKey?: string | null;
   target: string;
   onTargetChange: (to: string) => void;
   compact?: boolean;
+  onOptimisticSend: (m: MessageView) => void;
+  onOptimisticFail: (id: string) => void;
 }) {
   const { snap } = useLive();
   const [text, setText] = useState('');
@@ -291,12 +317,41 @@ const Composer = memo(function Composer({
 
   async function send() {
     if (!text.trim()) return;
+    const content = text;
+    const msgType = target === 'room' ? 'NOTE' : type;
+    const pendingId = `pending-${crypto.randomUUID()}`;
     setBusy(true);
     setErr(null);
+    setText('');
+    onOptimisticSend({
+      id: pendingId,
+      seq: Number.MAX_SAFE_INTEGER,
+      task_id: taskId,
+      conversation_id: '',
+      from_kind: 'user',
+      from_agent: null,
+      from_user_name: snap?.me.display_name ?? 'Tú',
+      to_agent: target !== 'all' && target !== 'room' ? target : null,
+      to_all: target === 'all',
+      message_type: msgType,
+      content,
+      status: 'SENT',
+      reply_to: null,
+      priority: 'NORMAL',
+      requires_action: false,
+      requires_approval: false,
+      git_branch: null,
+      git_commit: null,
+      files: [],
+      meta: {},
+      created_at: new Date().toISOString(),
+      task_key: taskKey ?? null,
+    });
     try {
-      await api('/api/messages', { body: { task_id: taskId, to: target, type: target === 'room' ? 'NOTE' : type, content: text, ...(targetAgent?.slug === 'nvidia' && nvidiaModel ? { model: nvidiaModel } : {}) } });
-      setText('');
+      await api('/api/messages', { body: { task_id: taskId, to: target, type: msgType, content, ...(targetAgent?.slug === 'nvidia' && nvidiaModel ? { model: nvidiaModel } : {}) } });
     } catch (e) {
+      onOptimisticFail(pendingId);
+      setText(content);
       setErr((e as Error).message);
     } finally {
       setBusy(false);
