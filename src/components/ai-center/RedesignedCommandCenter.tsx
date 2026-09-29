@@ -116,13 +116,18 @@ function Inspector({ runtimes, nvidia, agents, target, onTarget, activeRuntime, 
   </aside>;
 }
 
-function BottomPanels({ agents, skills, runtimes, routing, selectedTask, onSelectTask }: { agents: AgentView[]; skills: SkillItem[]; runtimes: RuntimeInfo[]; routing: ProviderPayload['model_routing']; selectedTask: string | null; onSelectTask: (id: string | null) => void }) {
-  const [tab,setTab]=useState<BottomTab>('skills'); const capabilities=Object.entries(routing??{});
-  return <div className="grid min-h-[205px] grid-cols-1 border-t border-[#202b38] bg-[#0b1017] xl:grid-cols-[1.05fr_1fr_1fr]">
-    <section className="min-h-0 border-b border-[#202b38] xl:border-b-0 xl:border-r"><SectionTitle number={5}>Agentes Disponibles</SectionTitle><div className="min-h-0 max-h-[185px] overflow-y-auto"><AgentRoster onMessage={onSelectTask ? undefined : undefined} selectedTask={selectedTask}/></div></section>
+function BottomPanels({ agents, skills, runtimes, routing, selectedTask, onSelectTask, onMessage }: { agents: AgentView[]; skills: SkillItem[]; runtimes: RuntimeInfo[]; routing: ProviderPayload['model_routing']; selectedTask: string | null; onSelectTask: (id: string | null) => void; onMessage: (id: string) => void }) {
+  const [tab,setTab]=useState<BottomTab>('skills');
+  const capabilities=Object.entries(routing??{});
+  return <><div className="grid min-h-[205px] grid-cols-1 border-t border-[#202b38] bg-[#0b1017] xl:grid-cols-[1.05fr_1fr_1fr]">
+    <section className="min-h-0 border-b border-[#202b38] xl:border-b-0 xl:border-r"><SectionTitle number={5}>Agentes Disponibles</SectionTitle><div className="max-h-[180px] overflow-y-auto"><AgentRoster onMessage={onMessage} selectedTask={selectedTask}/></div></section>
     <section id="skills" className="min-h-0 border-b border-[#202b38] xl:border-b-0 xl:border-r"><SectionTitle number={6}>Skills & Herramientas</SectionTitle><MiniTabs items={[{id:'skills',label:'Skills'},{id:'tools',label:'Herramientas'},{id:'integrations',label:'Integraciones'}]} active={tab} onChange={v=>setTab(v as BottomTab)}/><div className="max-h-28 overflow-y-auto p-2">{tab==='skills'?skills.slice(0,8).map(s=><div key={s.slug} className="flex items-center gap-2 border-b border-[#17212c] py-1.5"><span className="flex h-5 w-5 items-center justify-center rounded bg-[#182d4b] text-[#66a6ff]"><Icon name="sparkles" size={11}/></span><div className="min-w-0 flex-1"><div className="truncate text-[10px]">{s.name}</div><div className="truncate text-[8px] text-[#667488]">{s.description??s.category??'Skill registrada'}</div></div></div>):tab==='tools'?<div className="space-y-1 text-[9px] text-[#8795a8]"><div className="rounded border border-[#202b38] p-2">Herramientas declaradas por agentes: {agents.reduce((n,a)=>n+a.tools.length,0)}</div><div className="rounded border border-[#202b38] p-2">Transportes registrados: {new Set(agents.map(a=>a.transport)).size}</div></div>:<div className="space-y-1 text-[9px] text-[#8795a8]">{runtimes.slice(0,8).map(r=><div key={r.id} className="flex justify-between rounded border border-[#202b38] px-2 py-1.5"><span>{r.label}</span><span>{r.apiKeyPresent===false?'No configurado':'Disponible'}</span></div>)}</div>}</div></section>
-    <section className="min-h-0"><SectionTitle number={7}>Model Router</SectionTitle><div className="flex border-b border-[#202b38] px-1"><span className="border-b-2 border-[#3b82f6] px-3 py-2 text-[11px] text-[#dfeaff]">Por Capacidad</span><span className="px-3 py-2 text-[11px] text-[#7f8da0]">Configuración</span></div><div className="max-h-28 overflow-y-auto p-2">{capabilities.length?capabilities.map(([key,value])=><div key={key} className="flex items-center gap-2 border-b border-[#17212c] py-1.5"><Icon name="route" size={12}/><span className="min-w-0 flex-1 text-[9px] capitalize text-[#aab6c5]">{key}</span><span className="max-w-32 truncate text-[9px] text-[#dce6f3]">{value?.resolved_agent??value?.configured_slug??'sin resolución'}</span><span className="text-[#728198]">→</span></div>):<Empty>Sin rutas configuradas.</Empty>}</div></section>
-  </div>;
+    <section className="min-h-0"><SectionTitle number={7}>Model Router</SectionTitle><div className="flex border-b border-[#202b38] px-1"><span className="border-b-2 border-[#3b82f6] px-3 py-2 text-[11px] text-[#dfe6f3]">Por Capacidad</span><span className="px-3 py-2 text-[11px] text-[#7f8da0]">Configuración</span></div><div className="max-h-28 overflow-y-auto p-2">{capabilities.length?capabilities.map(([key,value])=><div key={key} className="flex items-center gap-2 border-b border-[#17212c] py-1.5"><Icon name="route" size={12}/><span className="min-w-0 flex-1 text-[9px] capitalize text-[#aab6c5]">{key}</span><span className="max-w-32 truncate text-[9px] text-[#dce6f3]">{value?.resolved_agent??value?.configured_slug??'sin resolución'}</span><span className="text-[#728198]">→</span></div>):<Empty>Sin rutas configuradas.</Empty>}</div></section>
+  </div>
+  <div className="grid min-h-[145px] grid-cols-1 border-t border-[#202b38] bg-[#080d14] lg:grid-cols-2">
+    <div className="min-h-0 overflow-hidden border-b border-[#202b38] lg:border-b-0 lg:border-r"><TaskList selected={selectedTask} onSelect={onSelectTask}/></div>
+    <div className="min-h-0 overflow-hidden"><ApprovalsPanel/></div>
+  </div></>;
 }
 
 export function RedesignedCommandCenter() {
@@ -141,7 +146,7 @@ export function RedesignedCommandCenter() {
       </main>
       {inspectorOpen&&<Inspector runtimes={runtimes} nvidia={providers?.nvidia} agents={snap?.agents??[]} target={target} onTarget={setTarget} activeRuntime={activeRuntime} onSelectRuntime={r=>setActiveRuntime(r.id)} onCreateTask={()=>setCreateTaskOpen(true)}/>}
     </div>
-    <BottomPanels agents={snap?.agents??[]} skills={skills} runtimes={runtimes} routing={providers?.model_routing} selectedTask={taskId} onSelectTask={id=>{setTaskId(id); if(id){const task=snap?.tasks.find(t=>t.id===id); if(task?.assigned_agent)setTarget(task.assigned_agent)}}}/><NewTaskModal open={createTaskOpen} onClose={()=>setCreateTaskOpen(false)} onCreated={(id)=>{setCreateTaskOpen(false);setTaskId(id)}}/>
+    <BottomPanels agents={snap?.agents??[]} skills={skills} runtimes={runtimes} routing={providers?.model_routing} selectedTask={taskId} onSelectTask={id=>{setTaskId(id); if(id){const task=snap?.tasks.find(t=>t.id===id); if(task?.assigned_agent)setTarget(task.assigned_agent)}}} onMessage={id=>setTarget(id)}/><NewTaskModal open={createTaskOpen} onClose={()=>setCreateTaskOpen(false)} onCreated={(id)=>{setCreateTaskOpen(false);setTaskId(id)}}/>
   </div>;
 }</div>
   <div className="grid min-h-[145px] grid-cols-1 border-t border-[#202b38] bg-[#080d14] lg:grid-cols-2">
