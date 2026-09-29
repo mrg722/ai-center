@@ -39,7 +39,7 @@ export function ConversationRoom({
   onTargetChange: (to: string) => void;
   compact?: boolean;
 }) {
-  const { snap, messageTick, activity, statusTick } = useLive();
+  const { snap, messageTick, activity, statusTick, refresh } = useLive();
   const agents = useAgentMap();
   const [messages, setMessages] = useState<MessageView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ export function ConversationRoom({
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
 
-  const q = taskId ? `task=${taskId}` : '';
+  const q = taskId ? `task=${taskId}` : snap?.general_conversation_id ? `conversation=${snap.general_conversation_id}` : '';
   const load = useCallback(async () => {
     const r = await api<{ messages: MessageView[] }>(`/api/messages?${q}&limit=80`);
     setMessages(r.messages);
@@ -97,17 +97,41 @@ export function ConversationRoom({
 
   const pendingApprovalIds = useMemo(() => new Set((snap?.approvals ?? []).map((a) => a.id)), [snap?.approvals]);
   const working = (snap?.agents ?? []).filter((a) => ['WORKING', 'THINKING', 'REVIEWING'].includes(a.status) && (!taskId || a.current_task_id === taskId));
+  const [clearing, setClearing] = useState(false);
+  async function clearChat() {
+    if (!confirm('¿Limpiar el chat? Los mensajes no se borran (quedan en el historial), pero la sala arranca vacía.')) return;
+    setClearing(true);
+    try {
+      await api('/api/messages/clear', { body: {} });
+      // the new general_conversation_id only reaches us via the snapshot —
+      // force it now instead of waiting for the next poll/SSE tick.
+      await refresh();
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setClearing(false);
+    }
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {!taskId && (
+        <div className="flex shrink-0 items-center justify-end border-b border-line px-2 py-1">
+          <Button size="sm" variant="ghost" onClick={clearChat} disabled={clearing}>
+            Limpiar chat
+          </Button>
+        </div>
+      )}
       <div
         ref={scroller}
-        className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 py-3 sm:px-3"
+        tabIndex={0}
+        className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 py-3 outline-none sm:px-3"
         onScroll={(e) => {
           const el = e.currentTarget;
           stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
         }}
         data-testid="conversation"
+        aria-label="Mensajes de la conversación, navegable con las flechas arriba/abajo o el ratón"
         aria-live="polite"
       >
         {hasMore && (

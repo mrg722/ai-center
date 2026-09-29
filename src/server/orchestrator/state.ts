@@ -45,7 +45,8 @@ export async function snapshot(db: Db, project: ProjectRow) {
     ),
     db.query<{ id: number }>(`select coalesce(max(id),0)::bigint as id from events where project_id=$1`, [project.id]),
     db.query<{ status: string; n: number }>(`select status, count(*)::int as n from tasks where project_id=$1 group by status`, [project.id]),
-    db.query<{ id: string }>(`select id from conversations where project_id=$1 and kind='general' order by created_at limit 1`, [project.id]),
+    // must match generalConversation() in repo.ts (most recent 'general' row) — "limpiar chat" inserts a fresh one.
+    db.query<{ id: string }>(`select id from conversations where project_id=$1 and kind='general' order by created_at desc limit 1`, [project.id]),
   ]);
   const taskCounts = Object.fromEntries(counts.rows.map((r) => [r.status, r.n]));
   return {

@@ -268,12 +268,27 @@ export async function getApproval(db: Db, id: string): Promise<ApprovalRow> {
   return r.rows[0];
 }
 
+/** Most recent 'general' conversation — see startNewGeneralConversation(): "limpiar chat"
+ * inserts a fresh one rather than deleting history, so this always resolves to it. */
 export async function generalConversation(db: Db, projectId: string): Promise<string> {
   const r = await db.query<{ id: string }>(
-    `select id from conversations where project_id=$1 and kind='general' order by created_at limit 1`,
+    `select id from conversations where project_id=$1 and kind='general' order by created_at desc limit 1`,
     [projectId],
   );
   if (r.rows[0]) return r.rows[0].id;
+  const c = await db.query<{ id: string }>(
+    `insert into conversations (project_id, kind, title) values ($1,'general','Command Room') returning id`,
+    [projectId],
+  );
+  return c.rows[0].id;
+}
+
+/**
+ * "Limpiar chat": never deletes messages (they're the audit trail) — starts a
+ * fresh general conversation so the room view is empty going forward.
+ * Old messages stay reachable by their original conversation_id.
+ */
+export async function startNewGeneralConversation(db: Db, projectId: string): Promise<string> {
   const c = await db.query<{ id: string }>(
     `insert into conversations (project_id, kind, title) values ($1,'general','Command Room') returning id`,
     [projectId],

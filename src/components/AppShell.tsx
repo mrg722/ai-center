@@ -92,8 +92,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.location.href = '/login';
   }
 
-  return <div className="flex min-h-dvh flex-col bg-ink-950">
-    <header className="sticky top-0 z-40 border-b border-[#202b38] bg-[#080d14]/95 backdrop-blur-xl">
+  return <div className="flex h-dvh flex-col overflow-hidden bg-ink-950">
+    <header className="sticky top-0 z-40 shrink-0 border-b border-[#202b38] bg-[#080d14]/95 backdrop-blur-xl">
       <div className="flex h-[60px] items-center gap-3 px-3 lg:px-5">
         <Link href="/" className="flex w-[230px] shrink-0 items-center gap-2.5" aria-label="AI CENTER">
           <Logo/><span><span className="block text-[17px] font-bold tracking-[.04em] text-[#e6edf5]">AI CENTER</span><span className="block text-[9px] tracking-wide text-[#657386]">Multi-AI Agent Platform</span></span>
@@ -112,7 +112,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       {snap?.project.mode==='DEMO'&&!snap.project.halted&&<div className="border-t border-st-thinking/30 bg-st-thinking/10 px-4 py-1 text-center text-[10px] text-st-thinking">MODO DEMO — los agentes están SIMULADOS.</div>}
       {error&&<div className="bg-st-error/10 px-4 py-1 text-center text-[10px] text-st-error">{error}</div>}
     </header>
-    <main className="flex min-h-0 flex-1 flex-col">{children}</main>
+    {/* overflow-y-auto here (not -hidden): most pages (Security Lab, Skills, etc.)
+        rely on this being their scroll container. The chat page fits exactly —
+        its own ConversationRoom manages an internal scroller — so this never
+        double-scrolls there; it's what actually fixes "the chat grows the whole
+        page" instead of scrolling in place. */}
+    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</main>
     <StatusStrip/>
   </div>;
 }
