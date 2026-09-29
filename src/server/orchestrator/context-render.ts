@@ -65,6 +65,11 @@ export interface CtxMemory {
   summary: string;
   importance: number;
 }
+export interface CtxKnowledge {
+  title: string;
+  category: string;
+  content: string;
+}
 export interface CtxReview {
   reviewer: string;
   verdict: string;
@@ -82,6 +87,7 @@ export interface RenderInput {
   docs: CtxDoc[];
   decisions: CtxDecision[];
   memories: CtxMemory[];
+  knowledge: CtxKnowledge[];
   reviews: CtxReview[];
   workspace: WorkspaceState | null;
   protocolHelp: string | null; // for hosted agents (action blocks)
@@ -258,6 +264,17 @@ export function renderContext(i: RenderInput): ContextPackage {
     });
   }
 
+  if (i.knowledge.length) {
+    sections.push({
+      name: 'knowledge',
+      priority: 45,
+      minChars: 0,
+      body: `## Relevant knowledge (reference material, not memory)\n${i.knowledge
+        .map((k) => `### ${k.title}${k.category ? ` (${k.category})` : ''}\n${clip(k.content, 1200)}`)
+        .join('\n')}`,
+    });
+  }
+
   if (i.protocolHelp) {
     sections.push({ name: 'protocol', priority: 98, minChars: 10_000, body: `## How to act\n${i.protocolHelp}` });
   }
@@ -281,7 +298,7 @@ export function fitBudget(sections: Section[], budget: number): ContextPackage {
     }
   }
   // keep a stable, readable order
-  const display = ['identity', 'protocol', 'rules', 'task', 'incoming', 'reviews', 'git', 'conversation', 'team', 'memory'];
+  const display = ['identity', 'protocol', 'rules', 'task', 'incoming', 'reviews', 'git', 'conversation', 'team', 'memory', 'knowledge'];
   const kept = sections.filter((s) => s.body).sort((a, b) => display.indexOf(a.name) - display.indexOf(b.name));
   const incomingIdx = kept.findIndex((s) => s.name === 'incoming');
   if (incomingIdx >= 0) kept.push(kept.splice(incomingIdx, 1)[0]);

@@ -336,6 +336,15 @@ export const memoryUpdateSchema = z.object({
   archived: z.boolean().optional(),
 });
 
+export const knowledgeCreateSchema = z.object({
+  title: text(300).min(1),
+  content: text(200_000).min(1),
+  category: text(80).default(''),
+  version: text(40).default('1.0.0'),
+  source: text(80).default('custom'),
+  path: text(500).optional(),
+});
+
 export const contextDocSchema = z.object({
   kind: z.enum(['rule', 'architecture', 'documentation', 'glossary', 'note', 'result']),
   title: text(200).min(1),
