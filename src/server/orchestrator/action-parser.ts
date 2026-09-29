@@ -44,7 +44,8 @@ export const ACTION_PROTOCOL_HELP = `To act, end your reply with ONE fenced bloc
  {"action":"record_review","verdict":"APPROVED|CHANGES_REQUESTED|COMMENTED","summary":"...","findings":[{"file":"...","note":"..."}]},
  {"action":"propose_decision","title":"...","decision":"...","rationale":"..."},
  {"action":"update_task","status":"IN_PROGRESS|WAITING_REVIEW|WAITING_USER|BLOCKED|COMPLETED","context_summary":"..."},
- {"action":"remember","type":"fact|lesson|preference|task_state|security_finding|episodic|semantic|project|decision","content":"...","importance":1-5}]
+ {"action":"remember","type":"fact|lesson|preference|task_state|security_finding|episodic|semantic|project|decision","content":"...","importance":1-5},
+ {"action":"create_subtask","parent_task_id":"...","title":"...","description":"...","capability":"simple|code|research|security|reasoning"}]
 \`\`\`
 task_id defaults to the current task. Omit the block if no action is needed; your reply text is posted to the conversation automatically.
 Use "remember" ONLY for something worth keeping across the conversation (a decision, a lesson, project state) — never to log routine chatter.`;

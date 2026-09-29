@@ -35,6 +35,14 @@ export interface ProjectSettings {
   daily_token_budget?: number;
   /** GitHub Actions workflow file triggered by an approved `deploy` (e.g. deploy.yml) */
   deploy_workflow?: string;
+  /**
+   * Model Router (Bloque 7): task capability → agent slug. Deterministic,
+   * operator-configured; see src/server/providers/router.ts. A task/action
+   * never picks a provider directly — it names a capability and the router
+   * resolves which already-configured agent (runtime+model+permissions)
+   * handles it.
+   */
+  model_routing?: Record<string, string>;
 }
 
 export interface AgentRow {

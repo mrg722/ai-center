@@ -251,6 +251,8 @@ export type AgentAction =
       title: string;
       description: string;
       assign_to?: string;
+      /** Model Router: used to pick the assignee when assign_to is omitted. */
+      capability?: 'simple' | 'code' | 'research' | 'security' | 'reasoning';
       priority?: Priority;
     }
   | {

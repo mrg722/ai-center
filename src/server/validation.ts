@@ -105,6 +105,7 @@ export const agentActionSchema = z.discriminatedUnion('action', [
     title: text(300).min(1),
     description: text(20_000),
     assign_to: slugRef.optional(),
+    capability: z.enum(['simple', 'code', 'research', 'security', 'reasoning']).optional(),
     priority: z.enum(PRIORITIES).optional(),
   }),
   z.object({
@@ -260,6 +261,7 @@ export const projectUpdateSchema = z.object({
   default_reviewer: z.string().max(40).optional(),
   daily_token_budget: z.number().int().min(0).max(100_000_000).optional(),
   deploy_workflow: z.string().regex(/^[\w.-]+\.ya?ml$/).or(z.literal('')).optional(),
+  model_routing: z.record(z.enum(['simple', 'code', 'research', 'security', 'reasoning']), z.string().max(40)).optional(),
   tool_servers: z
     .array(
       z.object({
