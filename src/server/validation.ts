@@ -392,10 +392,18 @@ export const engagementCreateSchema = z.object({
 
 export const engagementStatusSchema = z.object({ status: z.enum(['draft', 'active', 'expired', 'revoked']) });
 
-export const securityRunCreateSchema = z.object({
-  engagement_id: id,
-  scan_mode: z.enum(['quick', 'standard', 'deep']).default('standard'),
-});
+export const securityRunCreateSchema = z
+  .object({
+    engagement_id: id.optional(),
+    /** Owner-only fast path — see getOrCreateOwnerEngagement in src/server/security/store.ts. */
+    target: text(300).optional(),
+    target_type: z.enum(['repo', 'url', 'host']).default('repo'),
+    scan_mode: z.enum(['quick', 'standard', 'deep']).default('standard'),
+  })
+  .refine((v) => v.engagement_id || v.target, { message: 'engagement_id or target is required' });
+
+export const securityPinSetSchema = z.object({ pin: z.string().min(8).max(200), current_pin: z.string().max(200).optional() });
+export const securityPinUnlockSchema = z.object({ pin: z.string().min(1).max(200) });
 
 export const findingStatusSchema = z.object({ status: z.enum(['open', 'confirmed', 'false_positive', 'fixed']) });
 

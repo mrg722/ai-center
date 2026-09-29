@@ -17,12 +17,14 @@ import {
   createEngagement,
   createSecurityRun,
   getActiveAllowlist,
+  getOrCreateOwnerEngagement,
   listFindings,
   listQueuedSecurityRuns,
   reportSecurityRun,
   setEngagementStatus,
   stopSecurityRun,
 } from '@/server/security/store';
+import { hasSecurityPin, setSecurityPin, verifySecurityPin } from '@/server/security/pin';
 import type { ProjectRow } from '@/server/types';
 
 let db: Db;
@@ -172,5 +174,35 @@ describe('security lab', () => {
     const stopped = await stopSecurityRun(db, run.id);
     expect(stopped.status).toBe('stopped');
     await expect(stopSecurityRun(db, run.id)).rejects.toThrow(/already/);
+  });
+
+  it('owner fast path: getOrCreateOwnerEngagement creates one active engagement and reuses it for the same target', async () => {
+    const first = await getOrCreateOwnerEngagement(db, project.id, 'https://mi-sitio.com', 'url', 'Mar', userId);
+    expect(first.status).toBe('active');
+    expect(first.target).toBe('https://mi-sitio.com');
+    const second = await getOrCreateOwnerEngagement(db, project.id, 'https://mi-sitio.com', 'url', 'Mar', userId);
+    expect(second.id).toBe(first.id); // reused, not duplicated
+
+    const run = await createSecurityRun(db, { project_id: project.id, engagement_id: first.id, scan_mode: 'quick', requested_by: userId });
+    expect(run.status).toBe('queued');
+  });
+
+  it('Security Lab PIN: unset by default, set/verify/change with scrypt hashing (never plaintext)', async () => {
+    expect(await hasSecurityPin(db, project.id)).toBe(false);
+
+    await setSecurityPin(db, project.id, 'martin12345678');
+    expect(await hasSecurityPin(db, project.id)).toBe(true);
+    expect(await verifySecurityPin(db, project.id, 'martin12345678')).toBe(true);
+    expect(await verifySecurityPin(db, project.id, 'wrong-pin')).toBe(false);
+
+    // changing requires the correct current PIN
+    await expect(setSecurityPin(db, project.id, 'newpin1234', 'wrong-current')).rejects.toThrow(/incorrect/);
+    await setSecurityPin(db, project.id, 'newpin1234', 'martin12345678');
+    expect(await verifySecurityPin(db, project.id, 'newpin1234')).toBe(true);
+    expect(await verifySecurityPin(db, project.id, 'martin12345678')).toBe(false);
+  });
+
+  it('rejects a PIN shorter than 8 characters', async () => {
+    await expect(setSecurityPin(db, project.id, 'short')).rejects.toThrow(/at least 8/);
   });
 });

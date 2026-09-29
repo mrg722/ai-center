@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { userRoute } from '@/server/http/route';
 import { requireProject } from '@/server/orchestrator/repo';
+import { assertSecurityUnlocked } from '@/server/security/pin';
 import { listFindings } from '@/server/security/store';
 
 export const dynamic = 'force-dynamic';
@@ -11,9 +12,13 @@ const querySchema = z.object({
   security_run_id: z.string().uuid().optional(),
 });
 
-export const GET = userRoute(async ({ req, db, user }) => {
-  const q = querySchema.parse(Object.fromEntries(new URL(req.url).searchParams));
-  const project = await requireProject(db, user.id);
-  const findings = await listFindings(db, project.id, { severity: q.severity, status: q.status, securityRunId: q.security_run_id });
-  return { findings, total: findings.length };
-});
+export const GET = userRoute(
+  async ({ req, db, user }) => {
+    const q = querySchema.parse(Object.fromEntries(new URL(req.url).searchParams));
+    const project = await requireProject(db, user.id);
+    await assertSecurityUnlocked(project.id, user.id);
+    const findings = await listFindings(db, project.id, { severity: q.severity, status: q.status, securityRunId: q.security_run_id });
+    return { findings, total: findings.length };
+  },
+  { roles: ['owner'] },
+);

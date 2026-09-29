@@ -66,13 +66,14 @@ function ProviderMark({ runtime, color }: { runtime: string; color?: string }) {
   return <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-[12px] font-bold" style={{ color: tone, borderColor: tone + '55', background: tone + '16' }}>{initial}</span>;
 }
 
-const TOOL_LINKS: { label: string; icon: string; href: string | null }[] = [
+const TOOL_LINKS: { label: string; icon: string; href: string | null; ownerOnly?: boolean }[] = [
   { label: 'Modelos', icon: 'cpu', href: '/agents' },
   { label: 'Skills', icon: 'sparkles', href: '/skills' },
   { label: 'Memory', icon: 'brain', href: '/memory' },
   { label: 'Knowledge', icon: 'book', href: '/knowledge' },
-  { label: 'Security Lab', icon: 'shield', href: '/security' },
-  { label: 'Findings', icon: 'shield', href: '/findings' },
+  // Strix performs real active exploitation — owner-only (also enforced server-side).
+  { label: 'Security Lab', icon: 'shield', href: '/security', ownerOnly: true },
+  { label: 'Findings', icon: 'shield', href: '/findings', ownerOnly: true },
   // No backend yet — never a dead click pretending otherwise (see NAV comment above).
   { label: 'Reports', icon: 'chart', href: null },
 ];
@@ -108,7 +109,7 @@ function Sidebar({
       </div>
       <div className="mb-3"><div className="px-2 py-1 text-[10px] font-semibold tracking-[.13em] text-[#667488]">AGENTS</div><button onClick={() => onSelectAgent('all')} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px] text-[#9aa7b7] hover:bg-[#141d28]"><Icon name="users" size={14} /> Todos los agentes</button>
         {agents.map((agent) => <button key={agent.id} onClick={() => onSelectAgent(agent.id)} className={cx('flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px]', selectedAgent === agent.id ? 'bg-[#17263b] text-white' : 'text-[#8d9aac] hover:bg-[#141d28]')}><AgentAvatar name={agent.name} color={agent.color} size={20} status={agent.status} /><span className="truncate">{agent.name}</span></button>)}</div>
-      <div><div className="px-2 py-1 text-[10px] font-semibold tracking-[.13em] text-[#667488]">TOOLS</div>{TOOL_LINKS.map((t) => t.href ? <Link key={t.label} href={t.href} className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] text-[#8d9aac] hover:bg-[#141d28]"><Icon name={t.icon} size={14} />{t.label}</Link> : <span key={t.label} title="Todavía no tiene una sección propia implementada" className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] text-[#4a5568]"><Icon name={t.icon} size={14} />{t.label}</span>)}</div>
+      <div><div className="px-2 py-1 text-[10px] font-semibold tracking-[.13em] text-[#667488]">TOOLS</div>{TOOL_LINKS.filter(t => !t.ownerOnly || snap?.me.role === 'owner').map((t) => t.href ? <Link key={t.label} href={t.href} className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] text-[#8d9aac] hover:bg-[#141d28]"><Icon name={t.icon} size={14} />{t.label}</Link> : <span key={t.label} title="Todavía no tiene una sección propia implementada" className="flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] text-[#4a5568]"><Icon name={t.icon} size={14} />{t.label}</span>)}</div>
     </div>
     <div className="border-t border-[#202b38] p-3"><div className="mb-2 text-[10px] font-semibold tracking-[.13em] text-[#738196]">ESTADO DEL SISTEMA</div><div className="space-y-1.5">
       <div className="flex items-center gap-2 text-[11px] text-[#a0acba]"><span className={cx('h-2 w-2 rounded-full', connected ? 'bg-[#22c55e]' : 'bg-[#f59e0b]')} /> Live / SSE <span className="ml-auto text-[9px] text-[#657386]">{connected ? 'Online' : 'Reconnecting'}</span></div>

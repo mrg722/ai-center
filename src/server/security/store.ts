@@ -79,6 +79,29 @@ async function assertEngagementAuthorizesRun(db: Db, engagement: EngagementRow):
   if (engagement.ends_at && new Date(engagement.ends_at).getTime() < now) throw new Conflict('engagement authorization window has expired');
 }
 
+/**
+ * Owner-only fast path: no manual Engagement, no draft→active step. Reuses
+ * an existing active engagement for the exact target if one exists,
+ * otherwise creates one (pre-activated) with an authorization_evidence that
+ * says plainly what happened, so the audit trail stays honest even though
+ * no separate approval occurred.
+ */
+export async function getOrCreateOwnerEngagement(db: Db, projectId: string, target: string, targetType: EngagementRow['target_type'], ownerName: string, ownerId: string): Promise<EngagementRow> {
+  const trimmed = target.trim();
+  if (!trimmed) throw new BadRequest('target is required');
+  const existing = await db.query<EngagementRow>(
+    `select * from engagements where project_id=$1 and target=$2 and target_type=$3 and status='active' and (ends_at is null or ends_at >= now()) order by created_at desc limit 1`,
+    [projectId, trimmed, targetType],
+  );
+  if (existing.rows[0]) return existing.rows[0];
+  const r = await db.query<EngagementRow>(
+    `insert into engagements (project_id, target, target_type, scope_notes, authorization_evidence, authorized_by, status, created_by)
+     values ($1,$2,$3,'', 'Auto-authorized: owner-initiated scan of their own target via the Security Lab PIN gate (no manual Engagement).', $4, 'active', $5) returning *`,
+    [projectId, trimmed, targetType, ownerName, ownerId],
+  );
+  return r.rows[0];
+}
+
 export async function createSecurityRun(db: Db, i: CreateSecurityRunInput): Promise<SecurityRunRow> {
   const engagement = await getEngagement(db, i.engagement_id);
   if (engagement.project_id !== i.project_id) throw new NotFound('engagement not found');
