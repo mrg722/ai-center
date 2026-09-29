@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLive } from '@/lib/client/live';
 import { ConversationRoom } from '@/components/ConversationRoom';
-import { ActivityFeed, AgentRoster, ApprovalsPanel, GithubPanel, TaskList } from '@/components/Panels';
+import { ActivityFeed, AgentRoster, ApprovalsPanel, ContextPanel, GithubPanel, TaskList } from '@/components/Panels';
 import { TaskControls } from '@/components/TaskControls';
 import { useGithub } from '@/components/AppShell';
 import { OfficeCanvas } from '@/components/office/OfficeCanvas';
@@ -106,6 +106,9 @@ export default function CommandCenter() {
         <div className={cx('min-h-0 flex-col gap-3 overflow-y-auto', tab === 'approvals' ? 'flex' : 'hidden', 'xl:flex')}>
           <div className="shrink-0">
             <ApprovalsPanel />
+          </div>
+          <div className="h-64 shrink-0">
+            <ContextPanel />
           </div>
           <Link href="/office" className="group hidden shrink-0 overflow-hidden rounded-lg border border-line bg-ink-900 xl:block" aria-label="Abrir AI Office">
             <div className="flex h-8 items-center justify-between border-b border-line px-3 text-[11px] uppercase tracking-[0.12em] text-fg-muted">

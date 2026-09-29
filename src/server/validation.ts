@@ -16,6 +16,17 @@ import type { AgentAction } from '../shared/protocol';
 
 const text = (max: number) => z.string().max(max);
 const id = z.string().uuid();
+/**
+ * Query-string boolean. `z.coerce.boolean()` runs JS `Boolean(value)` on the
+ * raw string — `Boolean("false")` is `true`, so `?flag=false` would silently
+ * turn the flag ON. Query params are always strings; parse "true"/"false"
+ * explicitly instead. Exported so every `?flag=` param in the app uses this,
+ * not the footgun.
+ */
+export const queryBool = z
+  .enum(['true', 'false'])
+  .optional()
+  .transform((v) => (v === undefined ? undefined : v === 'true'));
 const slugRef = z.string().trim().min(1).max(40);
 const files = z.array(z.string().max(500)).max(200).optional();
 const sha = z.string().regex(/^[0-9a-f]{7,64}$/i).optional();
@@ -289,6 +300,8 @@ export const agentUpsertSchema = z.object({
   description: text(1000).default(''),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#94a3b8'),
   enabled: z.boolean().default(true),
+  /** Agent Registry link — see src/server/registry/agent-definitions.ts. null unlinks. */
+  agent_definition_id: id.nullable().optional(),
   config: z
     .object({
       base_url: z.string().url().max(500).optional().or(z.literal('')),

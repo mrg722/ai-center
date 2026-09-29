@@ -29,8 +29,8 @@ export const POST = userRoute(
     if (config.base_url && !provider.baseUrlEditable) delete config.base_url;
     if (await getAgentBySlug(db, project.id, body.slug)) throw new HttpError(409, 'slug already in use');
     const r = await db.query<{ id: string }>(
-      `insert into agents (project_id, slug, name, runtime, transport, model, role, role_label, description, color, config, enabled, sort_order)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id`,
+      `insert into agents (project_id, slug, name, runtime, transport, model, role, role_label, description, color, config, enabled, sort_order, agent_definition_id)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id`,
       [
         project.id,
         body.slug,
@@ -45,6 +45,7 @@ export const POST = userRoute(
         JSON.stringify(config),
         body.enabled,
         await nextSortOrder(db, project.id),
+        body.agent_definition_id ?? null,
       ],
     );
     await seedPermissions(db, r.rows[0].id, role, user.id);

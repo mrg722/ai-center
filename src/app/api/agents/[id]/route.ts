@@ -25,7 +25,8 @@ export const PATCH = userRoute<{ id: string }>(
     await db.query(
       `update agents set name=coalesce($2,name), runtime=$3, transport=$4, model=coalesce($5,model), role=coalesce($6,role),
           role_label=coalesce($7,role_label), description=coalesce($8,description), color=coalesce($9,color),
-          config=$10, enabled=coalesce($11,enabled)
+          config=$10, enabled=coalesce($11,enabled),
+          agent_definition_id = case when $12 then $13::uuid else agent_definition_id end
         where id=$1`,
       [
         agent.id,
@@ -39,6 +40,8 @@ export const PATCH = userRoute<{ id: string }>(
         body.color ?? null,
         JSON.stringify(config),
         body.enabled ?? null,
+        'agent_definition_id' in body,
+        body.agent_definition_id ?? null,
       ],
     );
     if (body.enabled !== undefined) await reconcileHolds(db, project.id);

@@ -4,7 +4,7 @@ import { userActor } from '@/server/auth/session';
 import { knowledgeCreateSchema } from '@/server/validation';
 import { requireProject } from '@/server/orchestrator/repo';
 import { emit } from '@/server/events/bus';
-import { createKnowledgeDocument, listKnowledgeDocuments } from '@/server/knowledge/store';
+import { createKnowledgeDocument, knowledgeStats, listKnowledgeDocuments } from '@/server/knowledge/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,8 +14,11 @@ const querySchema = z.object({ category: z.string().optional() });
 export const GET = userRoute(async ({ req, db }) => {
   const q = querySchema.parse(Object.fromEntries(new URL(req.url).searchParams));
   const project = await requireProject(db);
-  const documents = await listKnowledgeDocuments(db, { projectId: project.id, category: q.category });
-  return { documents, total: documents.length };
+  const [documents, stats] = await Promise.all([
+    listKnowledgeDocuments(db, { projectId: project.id, category: q.category }),
+    knowledgeStats(db, project.id),
+  ]);
+  return { documents, total: documents.length, stats };
 });
 
 export const POST = userRoute(

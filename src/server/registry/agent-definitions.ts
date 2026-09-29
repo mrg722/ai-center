@@ -1,7 +1,8 @@
 import 'server-only';
 import type { Db } from '../db';
 import { BadRequest, NotFound } from '../orchestrator/repo';
-import type { AgentDefinitionInput, AgentDefinitionRow } from './types';
+import { skillsForDefinition } from './skill-definitions';
+import type { AgentDefinitionInput, AgentDefinitionRow, SkillDefinitionRow } from './types';
 
 /**
  * Agent Registry — catalogue of reusable agent TEMPLATES (identity, mission,
@@ -140,6 +141,23 @@ export async function definitionSkillSlugs(db: Db, definitionId: string): Promis
     [definitionId],
   );
   return r.rows.map((x) => x.slug);
+}
+
+/**
+ * What the Context Engine actually needs for an executable agent that is
+ * linked to a definition: identity/mission (who it is) + its SELECTED
+ * skills' instructions (never the whole catalogue — see skillsForDefinition).
+ * This is the real "Security Engineer + api-security + owasp + memory + LLM"
+ * composition from docs/ARCHITECTURE_AI_PLATFORM.md § 1.
+ */
+export async function loadDefinitionForContext(
+  db: Db,
+  definitionId: string,
+): Promise<{ definition: AgentDefinitionRow; skills: SkillDefinitionRow[] } | null> {
+  const r = await db.query<AgentDefinitionRow>('select * from agent_definitions where id=$1 and enabled', [definitionId]);
+  if (!r.rows[0]) return null;
+  const skills = await skillsForDefinition(db, definitionId);
+  return { definition: r.rows[0], skills };
 }
 
 export async function setDefinitionSkills(db: Db, definitionId: string, skillIds: { skillId: string; required?: boolean }[]): Promise<void> {

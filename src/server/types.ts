@@ -60,6 +60,8 @@ export interface AgentRow {
   config: AgentConfig;
   enabled: boolean;
   paused: boolean;
+  /** Agent Registry link: identity/mission/skills template this executable agent runs as. */
+  agent_definition_id: string | null;
   token_hash: string | null;
   token_prefix: string | null;
   token_created_at: string | null;
@@ -214,4 +216,5 @@ export interface AgentView {
   office_style: string;
   config: AgentConfig;
   sort_order: number;
+  agent_definition_id: string | null;
 }

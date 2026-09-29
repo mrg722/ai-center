@@ -13,6 +13,9 @@ const NAV = [
   { href: '/', label: 'Command Center' },
   { href: '/office', label: 'AI Office' },
   { href: '/agents', label: 'Agentes' },
+  { href: '/skills', label: 'Skills' },
+  { href: '/memory', label: 'Memory' },
+  { href: '/knowledge', label: 'Knowledge' },
   { href: '/settings', label: 'Ajustes' },
 ];
 
