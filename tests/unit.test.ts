@@ -141,6 +141,7 @@ describe('context manager', () => {
     decisions: [],
     memories: [],
     knowledge: [],
+    definition: null,
     reviews: [],
     workspace: { branch: 'df-001', commit: 'abc1234def', dirty_files: ['src/auth.ts'] },
     protocolHelp: null,

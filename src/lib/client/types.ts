@@ -42,6 +42,7 @@ export interface AgentView {
     mcp_tool?: string;
   };
   sort_order: number;
+  agent_definition_id: string | null;
 }
 
 export interface TaskSummary {
@@ -263,6 +264,11 @@ export interface KnowledgeDocumentView {
   enabled: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface KnowledgeStats {
+  documents: number;
+  chunks: number;
 }
 
 /* ───────────────────────────── Model Router */

@@ -300,6 +300,8 @@ export const agentUpsertSchema = z.object({
   description: text(1000).default(''),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#94a3b8'),
   enabled: z.boolean().default(true),
+  /** Agent Registry link — see src/server/registry/agent-definitions.ts. null unlinks. */
+  agent_definition_id: id.nullable().optional(),
   config: z
     .object({
       base_url: z.string().url().max(500).optional().or(z.literal('')),

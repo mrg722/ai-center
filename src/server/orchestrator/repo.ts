@@ -181,6 +181,7 @@ export async function agentViews(db: Db, project: ProjectRow): Promise<AgentView
       office_style: a.config.office_style ?? defaultOfficeStyle(a.role),
       config: publicConfig(a.config),
       sort_order: a.sort_order,
+      agent_definition_id: a.agent_definition_id,
     } satisfies AgentView;
   });
 }

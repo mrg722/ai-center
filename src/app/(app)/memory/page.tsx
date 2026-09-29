@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useLive } from '@/lib/client/live';
 import { api } from '@/lib/client/api';
 import type { MemoryView } from '@/lib/client/types';
@@ -17,12 +18,13 @@ const SCOPE_LABEL: Record<MemoryView['scope'], string> = { global: 'Global', pro
  */
 export default function MemoryPage() {
   const { snap } = useLive();
+  const searchParams = useSearchParams();
   const [memories, setMemories] = useState<MemoryView[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
   const [scope, setScope] = useState('');
   const [type, setType] = useState('');
-  const [agentId, setAgentId] = useState('');
+  const [agentId, setAgentId] = useState(() => searchParams.get('agent_id') ?? '');
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
 

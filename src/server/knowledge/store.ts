@@ -47,6 +47,18 @@ export async function createKnowledgeDocument(db: Db, i: CreateKnowledgeDocument
   });
 }
 
+/** Project-wide document/chunk counts — for a compact "N documents / M chunks" summary. */
+export async function knowledgeStats(db: Db, projectId: string): Promise<{ documents: number; chunks: number }> {
+  const r = await db.query<{ documents: string; chunks: string }>(
+    `select count(distinct d.id)::text as documents, count(c.id)::text as chunks
+       from knowledge_documents d
+       left join knowledge_chunks c on c.document_id = d.id
+      where d.scope = 'global' or d.project_id = $1`,
+    [projectId],
+  );
+  return { documents: Number(r.rows[0]?.documents ?? 0), chunks: Number(r.rows[0]?.chunks ?? 0) };
+}
+
 export async function listKnowledgeDocuments(db: Db, f: { projectId?: string; category?: string; enabled?: boolean } = {}): Promise<KnowledgeDocumentRow[]> {
   const conds: string[] = [`(scope = 'global' or project_id = $1)`];
   const params: unknown[] = [f.projectId ?? null];

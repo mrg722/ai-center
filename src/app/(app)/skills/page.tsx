@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import type { AgentDefinitionView, SkillDefinitionView } from '@/lib/client/types';
 import { Button, cx, Empty, Field, inputCls, Modal } from '@/components/ui';
@@ -149,19 +150,24 @@ export default function SkillsPage() {
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {filteredAgents.map((d) => (
-                <button key={d.id} onClick={() => setInspectAgent(d)} className="rounded-lg border border-line bg-ink-900 p-3 text-left hover:border-line-strong">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-semibold">{d.name}</span>
-                    {d.customized && <span className="shrink-0 rounded border border-accent/40 px-1.5 py-0.5 font-mono text-[10px] text-accent">editado</span>}
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-xs text-fg-dim">{d.description || 'Sin descripción.'}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-fg-dim">
-                    <span className="rounded bg-ink-800 px-1.5 py-0.5">{d.division || 'sin división'}</span>
-                    <span className="rounded bg-ink-800 px-1.5 py-0.5">{d.source}</span>
-                    {d.skills.length > 0 && <span className="rounded bg-ink-800 px-1.5 py-0.5">{d.skills.length} skill(s)</span>}
-                    {!d.enabled && <span className="rounded border border-st-error/40 px-1.5 py-0.5 text-st-error">deshabilitada</span>}
-                  </div>
-                </button>
+                <div key={d.id} className="rounded-lg border border-line bg-ink-900 p-3 text-left hover:border-line-strong">
+                  <button onClick={() => setInspectAgent(d)} className="block w-full text-left">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-semibold">{d.name}</span>
+                      {d.customized && <span className="shrink-0 rounded border border-accent/40 px-1.5 py-0.5 font-mono text-[10px] text-accent">editado</span>}
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs text-fg-dim">{d.description || 'Sin descripción.'}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-fg-dim">
+                      <span className="rounded bg-ink-800 px-1.5 py-0.5">{d.division || 'sin división'}</span>
+                      <span className="rounded bg-ink-800 px-1.5 py-0.5">{d.source}</span>
+                      {d.skills.length > 0 && <span className="rounded bg-ink-800 px-1.5 py-0.5">{d.skills.length} skill(s)</span>}
+                      {!d.enabled && <span className="rounded border border-st-error/40 px-1.5 py-0.5 text-st-error">deshabilitada</span>}
+                    </div>
+                  </button>
+                  <Link href={`/agents/workspace/${d.id}`} className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:underline">
+                    Abrir workspace →
+                  </Link>
+                </div>
               ))}
             </div>
           )}
@@ -219,6 +225,9 @@ export default function SkillsPage() {
                 </div>
               </div>
             )}
+            <Link href={`/agents/workspace/${inspectAgent.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline">
+              Abrir Agent Workspace →
+            </Link>
           </div>
         )}
       </Modal>
