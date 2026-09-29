@@ -9,15 +9,15 @@ import type { GithubStatus } from '@/lib/client/types';
 import type { Mode, SystemState } from '@/shared/domain';
 import { Button, cx, StatusDot } from './ui';
 
-const NAV = [
+const NAV: { href: string | null; label: string; icon: string }[] = [
   { href: '/', label: 'Chat', icon: 'M4 5h16v11H8l-4 4V5Z' },
   { href: '/agents', label: 'Agents', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87' },
-  { href: '/settings', label: 'Skills', icon: 'm12 3-1.4 4.1L7 8.5l3.6 1.4L12 14l1.4-4.1L17 8.5l-3.6-1.4L12 3Z' },
-  { href: '/', label: 'Memory', icon: 'M9.5 3a3 3 0 0 0-3 3v.3A3.5 3.5 0 0 0 4 12a3.5 3.5 0 0 0 2.5 5.7V18a3 3 0 0 0 3 3h1v-7H9a2 2 0 0 1 0-4h1V3h-.5Z' },
-  { href: '/', label: 'Knowledge', icon: 'M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22V4.5ZM4 18h16' },
-  { href: '/office', label: 'Security Lab', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z' },
-  { href: '/office', label: 'Projects', icon: 'm3 7 3-3h5l2 2h8v14H3V7Z' },
-  { href: '/office', label: 'Reports', icon: 'M4 19V5M4 19h17M8 16v-4M12 16V8M16 16v-7M20 16v-4' },
+  { href: '/#skills', label: 'Skills', icon: 'm12 3-1.4 4.1L7 8.5l3.6 1.4L12 14l1.4-4.1L17 8.5l-3.6-1.4L12 3Z' },
+  { href: '/#memory', label: 'Memory', icon: 'M9.5 3a3 3 0 0 0-3 3v.3A3.5 3.5 0 0 0 4 12a3.5 3.5 0 0 0 2.5 5.7V18a3 3 0 0 0 3 3h1v-7H9a2 2 0 0 1 0-4h1V3h-.5Z' },
+  { href: '/#memory', label: 'Knowledge', icon: 'M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22V4.5ZM4 18h16' },
+  { href: null, label: 'Security Lab', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z' },
+  { href: null, label: 'Projects', icon: 'm3 7 3-3h5l2 2h8v14H3V7Z' },
+  { href: null, label: 'Reports', icon: 'M4 19V5M4 19h17M8 16v-4M12 16V8M16 16v-7M20 16v-4' },
   { href: '/settings', label: 'Settings', icon: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z' },
 ];
 
@@ -91,7 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Logo/><span><span className="block text-[17px] font-bold tracking-[.04em] text-[#e6edf5]">AI CENTER</span><span className="block text-[9px] tracking-wide text-[#657386]">Multi-AI Agent Platform</span></span>
         </Link>
         <nav className={cx('flex min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto', menu ? 'flex' : 'hidden md:flex')} aria-label="Navegación principal">
-          {NAV.map((n, i) => { const active = i === 0 ? path === '/' : n.href !== '/' && path.startsWith(n.href); return <Link key={n.label} href={n.href} onClick={() => setMenu(false)} className={cx('flex min-w-[72px] flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 text-[10px] transition', active ? 'bg-[#12346b] text-[#dbeafe]' : 'text-[#7f8da0] hover:bg-[#121b27] hover:text-[#dce6f3]')}><NavIcon d={n.icon}/><span>{n.label}</span></Link>; })}
+          {NAV.map((n, i) => { const active = i === 0 ? path === '/' : Boolean(n.href && n.href !== '/' && path.startsWith(n.href.split('#')[0])); return n.href ? <Link key={n.label} href={n.href} onClick={() => setMenu(false)} className={cx('flex min-w-[72px] flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 text-[10px] transition', active ? 'bg-[#12346b] text-[#dbeafe]' : 'text-[#7f8da0] hover:bg-[#121b27] hover:text-[#dce6f3]')}><NavIcon d={n.icon}/><span>{n.label}</span></Link> : <span key={n.label} title="Esta sección todavía no tiene una ruta propia implementada" className="flex min-w-[72px] cursor-not-allowed flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 text-[10px] text-[#465466]"><NavIcon d={n.icon}/><span>{n.label}</span></span>; })}
         </nav>
         <div className="hidden items-center gap-2 lg:flex"><div className="flex h-8 w-40 items-center gap-2 rounded-md border border-[#202b38] bg-[#0c121a] px-2.5 text-[10px] text-[#647286]"><span>⌕</span>Buscar…</div><div className="relative rounded-md p-2 text-[#9aa7b7]" aria-label="Notificaciones"><span>♧</span><i className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#ef4444]"/></div></div>
         <div className="hidden items-center gap-2 sm:flex"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6d3fd1] text-[12px] font-semibold text-white">{snap?.me.display_name?.slice(0,1).toUpperCase() ?? 'M'}</div><div className="hidden xl:block"><div className="text-[10px] font-medium">{snap?.me.display_name ?? 'Usuario'}</div><div className="text-[8px] text-[#718096]">{snap?.me.role ?? 'Owner'}</div></div><button onClick={logout} className="text-[#718096] hover:text-white" aria-label="Cerrar sesión">⌄</button></div>
