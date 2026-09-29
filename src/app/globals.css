@@ -15,16 +15,16 @@
   --color-fg: #dbe2ec;
   --color-fg-muted: #8b97a8;
   --color-fg-dim: #5c6779;
-  --color-accent: #f2b544;
-  --color-accent-soft: #f2b54422;
+  --color-accent: #2563eb;
+  --color-accent-soft: #2563eb24;
 
-  --color-st-online: #5fbf8a;
-  --color-st-working: #e8b04a;
-  --color-st-thinking: #a78bfa;
-  --color-st-waiting: #6fb3d9;
+  --color-st-online: #22c55e;
+  --color-st-working: #3b82f6;
+  --color-st-thinking: #a855f7;
+  --color-st-waiting: #f59e0b;
   --color-st-reviewing: #4fc1b5;
-  --color-st-error: #ef6b6b;
-  --color-st-blocked: #e08a3c;
+  --color-st-error: #ef4444;
+  --color-st-blocked: #f97316;
   --color-st-offline: #4b5566;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -60,7 +60,7 @@ body {
 }
 
 ::selection {
-  background: #f2b54455;
+  background: #2563eb55;
 }
 
 * {
