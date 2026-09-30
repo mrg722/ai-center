@@ -243,6 +243,11 @@ export const userMessageSchema = z.object({
   content: text(60_000).min(1),
   priority: z.enum(PRIORITIES).default('NORMAL'),
   reply_to: id.nullable().optional(),
+  /** Skills picked directly in the chat composer for this one request — see
+   * resolveChatSkills() in skill-definitions.ts. Client sends slugs only;
+   * the server resolves instructions/security_level, never trusts them from
+   * the browser. */
+  skill_slugs: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
 });
 
 export const taskControlSchema = z.discriminatedUnion('op', [

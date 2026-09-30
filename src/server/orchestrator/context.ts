@@ -2,13 +2,13 @@ import type { Db } from '../db';
 import type { AgentRow, MessageRow, ProjectRow, TaskRow } from '../types';
 import type { ContextPackage, WireMessage, WireTask } from '../../shared/protocol';
 import { env } from '../env';
-import { agentViews, effectivePermissions, openSession } from './repo';
+import { agentViews, effectivePermissions, generalConversation, openSession } from './repo';
 import { renderContext, summarizeMessages, type CtxMessage } from './context-render';
 import { ACTION_PROTOCOL_HELP } from './action-parser';
 import { relevantMemories } from '../memory/store';
 import { relevantKnowledge } from '../knowledge/store';
 import { loadDefinitionForContext } from '../registry/agent-definitions';
-import { renderSkillInstructions } from '../registry/skill-definitions';
+import { renderSkillInstructions, skillsBySlug } from '../registry/skill-definitions';
 
 const HISTORY_WINDOW = 14;
 
@@ -41,18 +41,34 @@ export async function buildContext(
   ]);
   const names = new Map(views.map((v) => [v.id, v.slug]));
 
-  let history: CtxMessage[] = [];
-  let olderSummary = '';
+  // Chat Skill Selection (third way to use skill_definitions, alongside
+  // Agent Definitions — see resolveChatSkills in skill-definitions.ts).
+  // Re-checked against `enabled` here too (skillsBySlug), so a skill
+  // disabled after the message was sent still never reaches the prompt.
+  const chatSkillSlugs = Array.isArray((incoming?.meta as { skills?: unknown } | undefined)?.skills)
+    ? ((incoming!.meta as { skills: unknown[] }).skills.filter((s): s is string => typeof s === 'string'))
+    : [];
+  const chatSkills = chatSkillSlugs.length ? await skillsBySlug(db, chatSkillSlugs) : [];
+
+  // Conversation history is keyed by conversation_id, not by task — the general
+  // room (task === null) has its own conversation_id (see generalConversation()
+  // in repo.ts) and deserves the same history/summary treatment a task gets.
+  // incoming.conversation_id is authoritative when we have an incoming message
+  // (router.ts sets it to task?.conversation_id ?? generalConversation(...) on
+  // insert); otherwise fall back to the same resolution for a context preview
+  // (GET /api/agent/context) with no incoming message.
+  const conversationId = incoming?.conversation_id ?? task?.conversation_id ?? (await generalConversation(db, project.id));
+  const msgs = await db.query<MessageRow>(
+    `select * from messages where conversation_id=$1 and message_type <> 'COMMAND' ${incoming ? 'and id <> $2' : ''} order by seq desc limit 60`,
+    incoming ? [conversationId, incoming.id] : [conversationId],
+  );
+  const all = msgs.rows.reverse().map((m) => toCtx(m, names));
+  const history: CtxMessage[] = all.slice(-HISTORY_WINDOW);
+  const older = all.slice(0, -HISTORY_WINDOW);
+  const olderSummary = (task?.context_summary || '') || (older.length ? summarizeMessages(older) : '');
+
   let reviews: { reviewer: string; verdict: string; summary: string }[] = [];
   if (task) {
-    const msgs = await db.query<MessageRow>(
-      `select * from messages where task_id=$1 and message_type <> 'COMMAND' ${incoming ? 'and id <> $2' : ''} order by seq desc limit 60`,
-      incoming ? [task.id, incoming.id] : [task.id],
-    );
-    const all = msgs.rows.reverse().map((m) => toCtx(m, names));
-    history = all.slice(-HISTORY_WINDOW);
-    const older = all.slice(0, -HISTORY_WINDOW);
-    olderSummary = task.context_summary || (older.length ? summarizeMessages(older) : '');
     const rv = await db.query<{ reviewer_agent: string; verdict: string; summary: string }>(
       `select reviewer_agent, verdict, summary from reviews where task_id=$1 order by created_at desc limit 5`,
       [task.id],
@@ -101,6 +117,7 @@ export async function buildContext(
           skillsInstructions: renderSkillInstructions(definitionCtx.skills, 2500),
         }
       : null,
+    chatSkillsInstructions: chatSkills.length ? renderSkillInstructions(chatSkills, 4000) : '',
     reviews,
     workspace: agent.transport === 'local-bridge' ? (session?.workspace ?? null) : null,
     protocolHelp:

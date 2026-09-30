@@ -142,6 +142,7 @@ describe('context manager', () => {
     memories: [],
     knowledge: [],
     definition: null,
+    chatSkillsInstructions: '',
     reviews: [],
     workspace: { branch: 'df-001', commit: 'abc1234def', dirty_files: ['src/auth.ts'] },
     protocolHelp: null,

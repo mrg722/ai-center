@@ -3,10 +3,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLive, useAgentMap } from '@/lib/client/live';
 import { api } from '@/lib/client/api';
-import type { MessageView } from '@/lib/client/types';
+import type { MessageView, SkillDefinitionView } from '@/lib/client/types';
 import { USER_MESSAGE_TYPES, type MessageType } from '@/shared/domain';
 import { Markdown } from './Markdown';
-import { AgentAvatar, Button, cx, Empty, inputCls } from './ui';
+import { AgentAvatar, Button, cx, Empty, inputCls, Modal } from './ui';
 
 const TYPE_TONE: Partial<Record<MessageType, string>> = {
   TASK: 'text-accent',
@@ -317,7 +317,23 @@ const Composer = memo(function Composer({
   const [orQuery, setOrQuery] = useState('');
   const [orModel, setOrModel] = useState('');
   const [orStatus, setOrStatus] = useState<{ limit: number | null; usage: number; limit_remaining: number | null; is_free_tier: boolean; rate_limit: { requests: number; interval: string } | null } | null>(null);
+  // Chat Skill Selection (a third way to use skill_definitions, alongside
+  // Agent Definitions — see resolveChatSkills server-side): temporary,
+  // per-request skills picked here are NOT saved onto the agent.
+  const [allSkills, setAllSkills] = useState<SkillDefinitionView[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<SkillDefinitionView[]>([]);
+  const [skillPickerOpen, setSkillPickerOpen] = useState(false);
   const agents = snap?.agents ?? [];
+
+  useEffect(() => {
+    let cancelled = false;
+    api<{ skills: SkillDefinitionView[] }>('/api/registry/skills')
+      .then((r) => !cancelled && setAllSkills(r.skills))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /** Persists the picked model on the agent (same control op the Agent Workspace/Inspector use) so it's actually applied, not just shown in the dropdown. */
   async function applyModel(agentId: string, model: string) {
@@ -361,10 +377,14 @@ const Composer = memo(function Composer({
       created_at: new Date().toISOString(),
       task_key: taskKey ?? null,
     });
+    const skillSlugs = selectedSkills.map((s) => s.slug);
     try {
       // Model selection is applied immediately when picked (applyModel, via
-      // the agent's set_model control op) — not per-message.
-      await api('/api/messages', { body: { task_id: taskId, to: target, type: msgType, content } });
+      // the agent's set_model control op) — not per-message. Skills are the
+      // opposite: sent per-message (skill_slugs), never persisted onto the
+      // agent — the server resolves+validates them (resolveChatSkills).
+      await api('/api/messages', { body: { task_id: taskId, to: target, type: msgType, content, ...(skillSlugs.length ? { skill_slugs: skillSlugs } : {}) } });
+      setSelectedSkills([]);
     } catch (e) {
       onOptimisticFail(pendingId);
       setText(content);
@@ -372,6 +392,10 @@ const Composer = memo(function Composer({
     } finally {
       setBusy(false);
     }
+  }
+
+  function toggleSkill(skill: SkillDefinitionView) {
+    setSelectedSkills((cur) => (cur.some((s) => s.id === skill.id) ? cur.filter((s) => s.id !== skill.id) : [...cur, skill]));
   }
 
   const targetAgent = agents.find((a) => a.id === target);
@@ -466,6 +490,22 @@ const Composer = memo(function Composer({
           </select>
         )}
       </div>
+      {target !== 'room' && (
+        <div className="mb-1 flex min-w-0 flex-wrap items-center gap-1 overflow-x-auto pb-0.5">
+          <span className="shrink-0 text-[10px] text-fg-dim">Skills</span>
+          {selectedSkills.map((s) => (
+            <span key={s.id} className="flex shrink-0 items-center gap-1 rounded border border-accent/40 bg-accent-soft px-1.5 py-0.5 text-[10px] text-accent">
+              {s.name}
+              <button onClick={() => toggleSkill(s)} aria-label={`Quitar skill ${s.name}`} className="hover:text-fg">
+                ×
+              </button>
+            </span>
+          ))}
+          <button onClick={() => setSkillPickerOpen(true)} className="shrink-0 rounded border border-line-strong px-1.5 py-0.5 text-[10px] text-fg-muted hover:bg-ink-800 hover:text-fg">
+            + Añadir Skill
+          </button>
+        </div>
+      )}
       {targetAgent?.slug === 'nvidia' && (
         <div className="mb-1 grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-1 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
           <input
@@ -561,6 +601,99 @@ const Composer = memo(function Composer({
         </p>
       )}
       {err && <p className="mt-1.5 text-[11px] text-st-error">{err}</p>}
+      <SkillPickerModal
+        open={skillPickerOpen}
+        onClose={() => setSkillPickerOpen(false)}
+        allSkills={allSkills}
+        selected={selectedSkills}
+        onToggle={toggleSkill}
+        onClear={() => setSelectedSkills([])}
+      />
     </div>
   );
 });
+
+const SEVERITY_STYLES: Record<SkillDefinitionView['security_level'], string> = {
+  standard: 'text-fg-dim border-line-strong',
+  elevated: 'text-st-waiting border-st-waiting/40',
+  restricted: 'text-st-error border-st-error/40',
+};
+
+/** Chat Skill Selection picker — desktop and mobile (Modal already handles both: bottom sheet on mobile, centered dialog on desktop). Consumes the same skill_definitions registry as /skills; never a parallel catalogue. */
+function SkillPickerModal({
+  open,
+  onClose,
+  allSkills,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  open: boolean;
+  onClose: () => void;
+  allSkills: SkillDefinitionView[];
+  selected: SkillDefinitionView[];
+  onToggle: (s: SkillDefinitionView) => void;
+  onClear: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
+  const enabled = useMemo(() => allSkills.filter((s) => s.enabled), [allSkills]);
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const list = needle ? enabled.filter((s) => `${s.name} ${s.slug} ${s.description} ${s.category}`.toLowerCase().includes(needle)) : enabled;
+    const byCategory = new Map<string, SkillDefinitionView[]>();
+    for (const s of list) {
+      const cat = s.category || 'General';
+      byCategory.set(cat, [...(byCategory.get(cat) ?? []), s]);
+    }
+    return [...byCategory.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [enabled, query]);
+
+  return (
+    <Modal open={open} onClose={onClose} title="Seleccionar Skills" wide>
+      <div className="space-y-3">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar…"
+          className={inputCls}
+          aria-label="Buscar skills"
+          autoFocus
+        />
+        <div className="max-h-[50vh] space-y-3 overflow-y-auto">
+          {filtered.length === 0 && <Empty>Sin skills que coincidan.</Empty>}
+          {filtered.map(([category, skills]) => (
+            <div key={category}>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-fg-dim">{category}</div>
+              <div className="space-y-1">
+                {skills.map((s) => (
+                  <label key={s.id} className="flex cursor-pointer items-start gap-2 rounded-md border border-line px-2 py-1.5 hover:bg-ink-850">
+                    <input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => onToggle(s)} className="mt-0.5 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-sm font-medium">{s.name}</span>
+                        <span className={cx('rounded border px-1 py-0 text-[9px] uppercase', SEVERITY_STYLES[s.security_level])}>{s.security_level}</span>
+                      </div>
+                      {s.description && <p className="mt-0.5 truncate text-[11px] text-fg-dim">{s.description}</p>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between border-t border-line pt-3">
+          <span className="text-xs text-fg-dim">Seleccionadas: {selected.length}</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={onClear} disabled={!selected.length}>
+              Limpiar
+            </Button>
+            <Button variant="primary" onClick={onClose}>
+              Aplicar
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}

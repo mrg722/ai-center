@@ -116,6 +116,26 @@ export async function skillsBySlug(db: Db, slugs: string[]): Promise<SkillDefini
   return r.rows;
 }
 
+/**
+ * Chat Skill Selection (a third way to use skill_definitions, alongside
+ * Agent Definitions): resolves slugs picked in the composer into real,
+ * enabled skills. The client sends only slugs — never instructions,
+ * security_level, or required_tools — so it can never inject arbitrary
+ * "skill" content into an agent's context. Unlike skillsBySlug() (which
+ * silently drops what it can't find), this rejects the whole request if any
+ * slug is unknown or disabled, so the moderator gets a clear error instead
+ * of a silently-smaller skill set.
+ */
+export async function resolveChatSkills(db: Db, slugs: string[]): Promise<SkillDefinitionRow[]> {
+  const unique = [...new Set(slugs)];
+  if (!unique.length) return [];
+  const found = await skillsBySlug(db, unique);
+  const foundSlugs = new Set(found.map((s) => s.slug));
+  const missing = unique.filter((s) => !foundSlugs.has(s));
+  if (missing.length) throw new BadRequest(`Unknown or disabled skill(s): ${missing.join(', ')}`);
+  return found;
+}
+
 /** Renders only the selected skills' instructions, bounded, for the Context Engine. */
 export function renderSkillInstructions(skills: SkillDefinitionRow[], maxCharsEach = 4000): string {
   return skills
