@@ -413,7 +413,6 @@ const Composer = memo(function Composer({
       setOrStatus(null);
       return;
     }
-    const openRouterAgent = targetAgent;
     let cancelled = false;
     api<{ openrouter: { models: { id: string; name?: string }[]; key_status: typeof orStatus } }>('/api/providers')
       .then((r) => {
@@ -424,7 +423,8 @@ const Composer = memo(function Composer({
         const currentIsFree = r.openrouter.models.some((m) => m.id === current);
         const nextModel = currentIsFree ? current : (r.openrouter.models[0]?.id || '');
         setOrModel(nextModel);
-        if (nextModel && nextModel !== current) void applyModel(openRouterAgent.id, nextModel);
+        // If the stored model is stale, the UI immediately presents a current free model.
+        // The message endpoint also repairs the persisted value before dispatch.
       })
       .catch(() => {
         if (!cancelled) setOrModels([]);
@@ -432,7 +432,7 @@ const Composer = memo(function Composer({
     return () => {
       cancelled = true;
     };
-  }, [targetAgent?.runtime, targetAgent?.model, applyModel]);
+  }, [targetAgent?.runtime, targetAgent?.model]);
 
   const filteredOrModels = useMemo(() => {
     const needle = orQuery.trim().toLowerCase();
