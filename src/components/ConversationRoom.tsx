@@ -436,9 +436,9 @@ const Composer = memo(function Composer({
 
   return (
     <div className="shrink-0 border-t border-line bg-ink-900 p-2 sm:p-3">
-      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
+      <div className="mb-1 flex min-w-0 items-center gap-1.5 overflow-x-auto pb-1 text-xs">
         <span className="text-fg-dim">Para</span>
-        <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Destinatario">
+        <div className="flex min-w-max flex-nowrap gap-1" role="radiogroup" aria-label="Destinatario">
           {agents.map((a) => (
             <button
               key={a.id}
@@ -459,7 +459,7 @@ const Composer = memo(function Composer({
           </button>
         </div>
         {target !== 'room' && (
-          <select value={type} onChange={(e) => setType(e.target.value as MessageType)} className="ml-auto rounded border border-line-strong bg-ink-950 px-1.5 py-0.5 font-mono text-[11px] text-fg-muted" aria-label="Tipo de mensaje">
+          <select value={type} onChange={(e) => setType(e.target.value as MessageType)} className="ml-auto shrink-0 rounded border border-line-strong bg-ink-950 px-1.5 py-0.5 font-mono text-[11px] text-fg-muted" aria-label="Tipo de mensaje">
             {USER_MESSAGE_TYPES.filter((t) => t !== 'NOTE').map((t) => (
               <option key={t}>{t}</option>
             ))}
@@ -467,7 +467,7 @@ const Composer = memo(function Composer({
         )}
       </div>
       {targetAgent?.slug === 'nvidia' && (
-        <div className="mb-2 grid gap-1.5 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+        <div className="mb-1 grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-1 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
           <input
             value={nvidiaQuery}
             onChange={(e) => setNvidiaQuery(e.target.value)}
@@ -494,8 +494,8 @@ const Composer = memo(function Composer({
         </div>
       )}
       {targetAgent?.runtime === 'openrouter' && (
-        <div className="mb-2 space-y-1">
-          <div className="grid gap-1.5 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+        <div className="mb-1 space-y-1">
+          <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-1 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
             <input
               value={orQuery}
               onChange={(e) => setOrQuery(e.target.value)}
@@ -521,7 +521,7 @@ const Composer = memo(function Composer({
             </select>
           </div>
           {orStatus && (
-            <p className="text-[10px] text-fg-dim">
+            <p className="truncate text-[10px] text-fg-dim">
               Uso: {orStatus.usage}
               {orStatus.limit !== null ? ` / ${orStatus.limit}` : ''}
               {orStatus.limit_remaining !== null ? ` · quedan ${orStatus.limit_remaining}` : ''}
@@ -547,7 +547,7 @@ const Composer = memo(function Composer({
               ? 'Nota para la sala (no se entrega a ninguna IA)…'
               : `Mensaje${taskKey ? ` en ${taskKey}` : ''} para ${targetAgent?.name ?? 'todas las IAs'} — Enter envía, Shift+Enter nueva línea`
           }
-          className={cx(inputCls, 'resize-none')}
+          className={cx(inputCls, 'resize-none max-sm:min-h-[54px] max-sm:max-h-[68px] max-sm:py-2')}
           data-testid="composer"
           aria-label="Mensaje"
         />
