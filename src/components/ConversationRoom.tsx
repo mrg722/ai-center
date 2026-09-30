@@ -321,14 +321,14 @@ const Composer = memo(function Composer({
   const agents = snap?.agents ?? [];
 
   /** Persists the picked model on the agent (same control op the Agent Workspace/Inspector use) so it's actually applied, not just shown in the dropdown. */
-  async function applyModel(agentId: string, model: string) {
+  const applyModel = useCallback(async (agentId: string, model: string) => {
     if (!model) return;
     try {
       await api(`/api/agents/${agentId}/control`, { body: { op: 'set_model', model } });
     } catch (e) {
       setErr((e as Error).message);
     }
-  }
+  }, []);
 
   async function send() {
     if (!text.trim()) return;
@@ -432,7 +432,7 @@ const Composer = memo(function Composer({
     return () => {
       cancelled = true;
     };
-  }, [targetAgent?.runtime, targetAgent?.model]);
+  }, [targetAgent?.runtime, targetAgent?.model, applyModel]);
 
   const filteredOrModels = useMemo(() => {
     const needle = orQuery.trim().toLowerCase();
