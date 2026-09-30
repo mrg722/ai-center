@@ -96,6 +96,10 @@ export interface RenderInput {
   memories: CtxMemory[];
   knowledge: CtxKnowledge[];
   definition: CtxDefinition | null;
+  /** Skills picked directly in the chat composer for THIS request only (not
+   * persisted onto the agent) — distinct from `definition.skillsInstructions`,
+   * which is the agent's own permanent specialization. See resolveChatSkills(). */
+  chatSkillsInstructions: string;
   reviews: CtxReview[];
   workspace: WorkspaceState | null;
   protocolHelp: string | null; // for hosted agents (action blocks)
@@ -176,6 +180,15 @@ export function renderContext(i: RenderInput): ContextPackage {
       ]
         .filter(Boolean)
         .join('\n\n'),
+    });
+  }
+
+  if (i.chatSkillsInstructions) {
+    sections.push({
+      name: 'chat_skills',
+      priority: 96,
+      minChars: 3000,
+      body: `## Skills selected for this request\n${clip(i.chatSkillsInstructions, 6000)}`,
     });
   }
 
@@ -323,7 +336,7 @@ export function fitBudget(sections: Section[], budget: number): ContextPackage {
     }
   }
   // keep a stable, readable order
-  const display = ['identity', 'protocol', 'definition', 'rules', 'task', 'incoming', 'reviews', 'git', 'conversation', 'team', 'memory', 'knowledge'];
+  const display = ['identity', 'protocol', 'definition', 'chat_skills', 'rules', 'task', 'incoming', 'reviews', 'git', 'conversation', 'team', 'memory', 'knowledge'];
   const kept = sections.filter((s) => s.body).sort((a, b) => display.indexOf(a.name) - display.indexOf(b.name));
   const incomingIdx = kept.findIndex((s) => s.name === 'incoming');
   if (incomingIdx >= 0) kept.push(kept.splice(incomingIdx, 1)[0]);

@@ -7,6 +7,7 @@ import { postMessage } from '@/server/orchestrator/router';
 import { listMessages } from '@/server/orchestrator/state';
 import { drainHostedQueue } from '@/server/orchestrator/hosted';
 import { listOpenRouterModels } from '@/server/providers/openrouter';
+import { resolveChatSkills } from '@/server/registry/skill-definitions';
 import type { MessageType } from '@/shared/domain';
 
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,12 @@ export const POST = userRoute(async ({ req, db, user }) => {
       }
     }
   }
+  // Chat Skill Selection (third way to use skill_definitions, alongside
+  // Agent Definitions — see resolveChatSkills). Validated server-side; only
+  // stable slugs (never instructions/security_level from the client) land in
+  // meta.skills, where buildContext() picks them up for this request only.
+  const chatSkills = body.skill_slugs?.length ? await resolveChatSkills(db, body.skill_slugs) : [];
+
   const { message, deliveries } = await postMessage(db, {
     project,
     task,
@@ -69,6 +76,7 @@ export const POST = userRoute(async ({ req, db, user }) => {
     priority: body.priority,
     replyTo: body.reply_to ?? null,
     requiresAction: body.to !== 'room',
+    meta: chatSkills.length ? { skills: chatSkills.map((s) => s.slug) } : undefined,
   });
   after(() => drainHostedQueue());
   return { message_id: message.id, deliveries: deliveries.length, held: deliveries.filter((d) => d.status === 'HELD').length };
