@@ -109,7 +109,6 @@ function SecurityLabContent({ onLocked }: { onLocked: () => void }) {
   const [engagements, setEngagements] = useState<EngagementView[]>([]);
   const [runs, setRuns] = useState<SecurityRunView[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creatingEngagement, setCreatingEngagement] = useState(false);
   const [quickScan, setQuickScan] = useState(false);
   const [changingPin, setChangingPin] = useState(false);
 
@@ -174,9 +173,6 @@ function SecurityLabContent({ onLocked }: { onLocked: () => void }) {
           <Button size="sm" onClick={lockNow}>
             Bloquear ahora
           </Button>
-          <Button variant="accent" onClick={() => setCreatingEngagement(true)}>
-            + Engagement (terceros)
-          </Button>
           <Button variant="primary" onClick={() => setQuickScan(true)}>
             + Nuevo Scan
           </Button>
@@ -185,7 +181,7 @@ function SecurityLabContent({ onLocked }: { onLocked: () => void }) {
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-fg-muted">Engagements</h2>
-        <p className="text-[11px] text-fg-dim">Registro de autorización — obligatorio solo para targets de terceros. Tus propios scans no necesitan uno (se crea automáticamente en segundo plano).</p>
+        <p className="text-[11px] text-fg-dim">Tus propios scans no requieren evidencia ni un aprobador manual: el Security Lab crea el registro de auditoría automáticamente detrás del PIN. La vía manual para terceros permanece disponible solo por API.</p>
         {loading ? (
           <Empty>Cargando…</Empty>
         ) : engagements.length === 0 ? (
@@ -255,7 +251,6 @@ function SecurityLabContent({ onLocked }: { onLocked: () => void }) {
         )}
       </section>
 
-      <CreateEngagementModal open={creatingEngagement} onClose={() => setCreatingEngagement(false)} onCreated={reload} />
       <QuickScanModal open={quickScan} onClose={() => setQuickScan(false)} onCreated={reload} />
       <ChangePinModal open={changingPin} onClose={() => setChangingPin(false)} />
     </div>
@@ -326,57 +321,6 @@ function QuickScanModal({ open, onClose, onCreated }: { open: boolean; onClose: 
           </Button>
           <Button variant="primary" disabled={busy || !form.target.trim()} onClick={submit}>
             Lanzar
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function CreateEngagementModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ target: '', target_type: 'repo' as 'repo' | 'url' | 'host', scope_notes: '', authorization_evidence: '', authorized_by: '' });
-  const [busy, setBusy] = useState(false);
-  async function submit() {
-    setBusy(true);
-    try {
-      await api('/api/security/engagements', { body: form });
-      setForm({ target: '', target_type: 'repo', scope_notes: '', authorization_evidence: '', authorized_by: '' });
-      onClose();
-      onCreated();
-    } catch (e) {
-      alert((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <Modal open={open} onClose={onClose} title="Nuevo Engagement (target de terceros)" wide>
-      <div className="space-y-3">
-        <Field label="Target" hint="Repo (owner/nombre), URL, o host.">
-          <input className={inputCls} value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} placeholder="acme/web" />
-        </Field>
-        <Field label="Tipo">
-          <select className={inputCls} value={form.target_type} onChange={(e) => setForm({ ...form, target_type: e.target.value as typeof form.target_type })}>
-            <option value="repo">repo</option>
-            <option value="url">url</option>
-            <option value="host">host</option>
-          </select>
-        </Field>
-        <Field label="Alcance (opcional)" hint="Qué está dentro/fuera de alcance.">
-          <textarea className={cx(inputCls, 'min-h-20')} value={form.scope_notes} onChange={(e) => setForm({ ...form, scope_notes: e.target.value })} />
-        </Field>
-        <Field label="Evidencia de autorización" hint="Link o descripción de la autorización por escrito del tercero.">
-          <textarea className={cx(inputCls, 'min-h-20')} value={form.authorization_evidence} onChange={(e) => setForm({ ...form, authorization_evidence: e.target.value })} />
-        </Field>
-        <Field label="Autorizado por">
-          <input className={inputCls} value={form.authorized_by} onChange={(e) => setForm({ ...form, authorized_by: e.target.value })} />
-        </Field>
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button variant="primary" disabled={busy || !form.target.trim() || !form.authorization_evidence.trim() || !form.authorized_by.trim()} onClick={submit}>
-            Crear (queda en borrador)
           </Button>
         </div>
       </div>
