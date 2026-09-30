@@ -317,3 +317,19 @@ Fecha: 2026-09-30
 Hora: 02:59:40
 Zona: UTC (+00:00)
 Timestamp: 2026-09-30T02:59:40Z
+
+
+## 21. Ajuste posterior — Security Lab para targets propios
+
+Fecha: 2026-09-30.
+
+- Se eliminó del panel principal el botón "+ Engagement (terceros)".
+- Se eliminó de la UI el formulario que solicitaba "Evidencia de autorización" y "Autorizado por".
+- El flujo visible para el owner queda en "+ Nuevo Scan", usando el fast path existente `getOrCreateOwnerEngagement()`.
+- El fast path sigue creando automáticamente el registro de auditoría para el target propio detrás del PIN de Security Lab.
+- La API de engagements para terceros y sus validaciones de autorización permanecen intactas.
+- Se conservaron PIN, sesión owner, Local Bridge y ejecución de Strix desde el bridge local.
+
+Commit de código: `16c36b0fae44dd83fb3b27cf14ea08f473db59e8`.
+
+Validación pendiente en entorno de ejecución: `npm run lint`, `npm run typecheck`, `npm test` y `npm run build`.
