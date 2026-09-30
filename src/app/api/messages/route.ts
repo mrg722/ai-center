@@ -6,6 +6,7 @@ import { findTask, getAgent, requireProject } from '@/server/orchestrator/repo';
 import { postMessage } from '@/server/orchestrator/router';
 import { listMessages } from '@/server/orchestrator/state';
 import { drainHostedQueue } from '@/server/orchestrator/hosted';
+import { listOpenRouterModels } from '@/server/providers/openrouter';
 import type { MessageType } from '@/shared/domain';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,30 @@ export const POST = userRoute(async ({ req, db, user }) => {
   if (body.to !== 'room' && body.to !== 'all') {
     const a = await getAgent(db, body.to);
     if (a.project_id !== project.id) throw new HttpError(400, 'unknown agent');
+
+    // OpenRouter's free catalogue is dynamic. Repair a stale persisted model
+    // before dispatch so an old paid-only slug can never cause a 404 run.
+    if (a.runtime === 'openrouter') {
+      const free = (await listOpenRouterModels()).filter((m) => m.free);
+      if (!free.length) throw new HttpError(503, 'OpenRouter has no free models available right now');
+      if (a.model !== 'openrouter/free' && !free.some((m) => m.id === a.model)) {
+        await db.query('update agents set model=$2 where id=$1', [a.id, free[0].id]);
+      }
+    }
+  } else if (body.to === 'all') {
+    const openRouterAgents = await db.query<{ id: string; model: string }>(
+      "select id, model from agents where project_id=$1 and runtime='openrouter' and enabled=true",
+      [project.id],
+    );
+    if (openRouterAgents.rows.length) {
+      const free = (await listOpenRouterModels()).filter((m) => m.free);
+      if (!free.length) throw new HttpError(503, 'OpenRouter has no free models available right now');
+      for (const a of openRouterAgents.rows) {
+        if (a.model !== 'openrouter/free' && !free.some((m) => m.id === a.model)) {
+          await db.query('update agents set model=$2 where id=$1', [a.id, free[0].id]);
+        }
+      }
+    }
   }
   const { message, deliveries } = await postMessage(db, {
     project,
