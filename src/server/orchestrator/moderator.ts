@@ -1,6 +1,7 @@
 import type { Db } from '../db';
 import type { Actor, AgentRow, ApprovalRow, ProjectRow, TaskRow } from '../types';
 import type { Mode, PermissionAction, TaskStatus } from '../../shared/domain';
+import { PERMISSION_ACTIONS } from '../../shared/domain';
 import type { AgentAction } from '../../shared/protocol';
 import { emit } from '../events/bus';
 import { newAgentToken } from '../security/crypto';
@@ -105,6 +106,37 @@ export async function setPermission(
     agent_id: agent.id,
     payload: { action: p.action, allowed: p.allowed, temporary_minutes: p.temporaryMinutes ?? null },
   });
+}
+
+/**
+ * Bulk permission shortcut ("Permitir todo" / "Preguntar antes de" in the
+ * UI) — applies a base grant to EVERY PermissionAction in one call instead
+ * of toggling each one by hand. Not a new gating mechanism: it goes through
+ * the exact same `permissions` table and the exact same Policy Engine
+ * (decide()) that per-action grants already use.
+ *
+ *  - allow_all:  every action is granted. Whether that then executes
+ *    immediately or still stops for a human approval is decided by the
+ *    project's mode (SUPERVISED/AUTONOMOUS) exactly as before — this only
+ *    removes the outright "Agent lacks permission" denial.
+ *  - ask_first:  read/write stay granted (the agent can still work), every
+ *    other action (commit, push, merge, deploy, dangerous_operations,
+ *    handoff, create_task, pr_create, paid_api) is revoked, so the agent
+ *    cannot do any of them until the moderator explicitly grants it —
+ *    i.e. the agent must ask first.
+ */
+export async function setPermissionPolicy(
+  db: Db,
+  agent: AgentRow,
+  actor: Extract<Actor, { kind: 'user' }>,
+  p: { policy: 'allow_all' | 'ask_first'; reason: string },
+) {
+  const alwaysOn: PermissionAction[] = ['read', 'write'];
+  for (const action of PERMISSION_ACTIONS) {
+    const allowed = p.policy === 'allow_all' || alwaysOn.includes(action);
+    await setPermission(db, agent, actor, { action, allowed, reason: p.reason });
+  }
+  await emit(db, { project_id: agent.project_id, type: 'permission.changed', actor, agent_id: agent.id, payload: { policy: p.policy } });
 }
 
 export async function revokeTemporary(db: Db, agent: AgentRow, actor: Actor, action: PermissionAction) {

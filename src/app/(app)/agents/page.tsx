@@ -169,7 +169,26 @@ function PermissionMatrix({ agent, onChange }: { agent: AgentView; onChange: (bo
   const temp = new Map(agent.temporary_grants.map((g) => [g.action, g]));
   return (
     <div>
-      <div className="mb-1.5 text-[10px] uppercase tracking-[0.12em] text-fg-dim">Permisos efectivos</div>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-[10px] uppercase tracking-[0.12em] text-fg-dim">Permisos efectivos</span>
+        <div className="flex gap-1.5">
+          <Button
+            size="sm"
+            variant="accent"
+            title="Concede todos los permisos a esta IA (sigue respetando merge/deploy y el modo del proyecto)"
+            onClick={() => confirm(`¿Permitir todo a ${agent.name}? Podrá commit/push/PR/handoff/crear tareas sin que se le niegue por falta de permiso.`) && onChange({ op: 'set_permission_policy', policy: 'allow_all', reason: 'bulk: permitir todo' })}
+          >
+            ✓ Permitir todo
+          </Button>
+          <Button
+            size="sm"
+            title="Deja solo lectura/escritura; cualquier accion sensible queda denegada hasta que la concedas tu"
+            onClick={() => confirm(`¿Pedir que ${agent.name} pregunte antes de actuar? Se revocan commit/push/merge/PR/deploy/handoff/crear tareas/dangerous/paid API hasta que los concedas tú.`) && onChange({ op: 'set_permission_policy', policy: 'ask_first', reason: 'bulk: preguntar antes de' })}
+          >
+            ✋ Preguntar antes de
+          </Button>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3" data-testid={`perms-${agent.slug}`}>
         {PERMISSION_ACTIONS.map((p) => {
           const on = agent.permissions[p];
