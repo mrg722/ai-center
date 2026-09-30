@@ -333,3 +333,25 @@ Fecha: 2026-09-30.
 Commit de código: `16c36b0fae44dd83fb3b27cf14ea08f473db59e8`.
 
 Validación pendiente en entorno de ejecución: `npm run lint`, `npm run typecheck`, `npm test` y `npm run build`.
+
+
+## 22. Ajuste de integración Security Lab ↔ Strix Local Bridge
+
+Fecha: 2026-09-30.
+
+Durante la puesta en marcha se detectaron dos problemas en el adaptador local de Strix:
+
+- El proceso hijo del bridge filtraba `LLM_API_KEY` por la política general de sanitización de secretos, por lo que una configuración válida por variables de entorno no llegaba a Strix. Se añadió una allowlist explícita y limitada para las variables necesarias del propio Strix.
+- El worker intentaba leer `strix_runs/<bridge_run_name>/findings*.json`, aunque Strix genera su propio nombre de run y la documentación actual usa principalmente `vulnerabilities.json`. Ahora el worker localiza el run más reciente generado por Strix y acepta `vulnerabilities.json` o formatos de findings equivalentes.
+
+Además, se admite opcionalmente `ACC_STRIX_MAX_BUDGET` (o `STRIX_MAX_BUDGET`) para pasar un límite de gasto a Strix sin exponer ni registrar la clave del proveedor.
+
+Archivos modificados:
+- `bridge/src/runners/proc.ts`
+- `bridge/src/security/strix-worker.ts`
+
+Commits:
+- `2cb1c5693fd0ffdb8a9770465b02b5ccfb9208cd`
+- `1c3968a9ff8489d5c1ce10559ef5f2bc8f3c7cac`
+
+Pendiente: recompilar el bridge local (`npm run bridge:build`) y ejecutar un scan real para validar extremo a extremo.
