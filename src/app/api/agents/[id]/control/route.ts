@@ -13,6 +13,7 @@ import {
 } from '@/server/orchestrator/moderator';
 import { drainHostedQueue } from '@/server/orchestrator/hosted';
 import { nvidiaModelAvailable } from '@/server/providers/nvidia';
+import { listOpenRouterModels } from '@/server/providers/openrouter';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // these routes trigger after(() => drainHostedQueue()), which calls a real provider and can take a while (non-streamed, large-model completions)
@@ -43,8 +44,21 @@ export const POST = userRoute<{ id: string }>(
         await revokeToken(db, agent, actor);
         return { ok: true };
       case 'set_model':
-        if (agent.runtime !== 'nvidia-nim') throw new HttpError(400, 'model switching is only available for NVIDIA NIM');
-        if (!(await nvidiaModelAvailable(body.model))) throw new HttpError(400, 'NVIDIA model is not available in the current catalogue');
+        if (agent.runtime === 'nvidia-nim') {
+          if (!(await nvidiaModelAvailable(body.model))) throw new HttpError(400, 'NVIDIA model is not available in the current catalogue');
+        } else if (agent.runtime === 'openrouter') {
+          // OpenRouter's free catalogue changes over time. Accept the official
+          // free router or a model currently reported as free; never persist a
+          // stale paid/unavailable model through this control endpoint.
+          if (body.model !== 'openrouter/free') {
+            const free = (await listOpenRouterModels()).filter((m) => m.free);
+            if (!free.some((m) => m.id === body.model)) {
+              throw new HttpError(400, 'OpenRouter model is not currently available on the free tier');
+            }
+          }
+        } else {
+          throw new HttpError(400, 'model switching is only available for NVIDIA NIM and OpenRouter');
+        }
         await db.query('update agents set model=$2 where id=$1', [agent.id, body.model]);
         return { ok: true, model: body.model };
       case 'set_permission':
