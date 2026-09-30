@@ -32,18 +32,24 @@ export function runProcess(opts: {
   cwd: string;
   stdin?: string;
   env?: NodeJS.ProcessEnv;
+  /** Explicit allowlist for secret-looking env vars intentionally needed by a local tool. */
+  allowSecretEnv?: string[];
   signal: AbortSignal;
   timeoutS: number;
   onLine?: (line: string) => void;
   onErrLine?: (line: string) => void;
 }): Promise<ProcResult> {
   return new Promise((resolve) => {
+    const childEnv = sanitizedChildEnv(opts.env);
+    for (const name of opts.allowSecretEnv ?? []) {
+      const value = opts.env?.[name] ?? process.env[name];
+      if (value !== undefined) childEnv[name] = value;
+    }
     const child = spawn(opts.bin, opts.args, {
       cwd: opts.cwd,
       // Do not inherit API keys, tokens, database URLs or other obvious secrets into an agent CLI.
-      // Local CLIs authenticate through their own credential stores; secret-bearing env vars
-      // require an explicit, separate integration rather than implicit inheritance.
-      env: sanitizedChildEnv(opts.env),
+      // Secret-bearing vars are only restored when the caller explicitly allowlists the exact name.
+      env: childEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
     });
