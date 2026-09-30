@@ -137,6 +137,7 @@ export default function AgentsPage() {
                   </>
                 )}
               </dl>
+              {a.usage_today && <UsageToday usage={a.usage_today} />}
               {a.transport === 'local-bridge' && (
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button size="sm" variant={a.has_token ? 'default' : 'accent'} onClick={() => (!a.has_token || confirm('Rotar el token desconectará el bridge actual. ¿Continuar?')) && control(a, { op: 'issue_token' })}>
@@ -161,6 +162,38 @@ export default function AgentsPage() {
       <TokenModal data={token} onClose={() => setToken(null)} />
       <AgentForm open={adding} onClose={() => setAdding(false)} providers={providers} />
       {editing && <AgentForm open onClose={() => setEditing(null)} providers={providers} agent={editing} />}
+    </div>
+  );
+}
+
+/** Time-until formatter for the daily reset ("resets in 3h 12m"). Falls back to a plain time once under a minute. */
+function resetsIn(iso: string, now = Date.now()): string {
+  const ms = new Date(iso).getTime() - now;
+  if (ms <= 0) return 'ahora';
+  const mins = Math.floor(ms / 60_000);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/** Daily token usage vs. the project's daily_token_budget (same window the paid_api_call policy gate uses) — provider-agnostic, shown for every paid http-api agent, not just OpenRouter. */
+function UsageToday({ usage }: { usage: NonNullable<AgentView['usage_today']> }) {
+  const pct = usage.daily_budget ? Math.min(100, Math.round((usage.tokens / usage.daily_budget) * 100)) : null;
+  const near = pct !== null && pct >= 90;
+  return (
+    <div className="mt-1 rounded-md border border-line bg-ink-850 px-2 py-1.5 text-[11px]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-fg-dim">Uso hoy</span>
+        <span className={cx('font-mono', near ? 'text-st-error' : 'text-fg-muted')}>
+          {usage.tokens.toLocaleString('es')} {usage.daily_budget ? `/ ${usage.daily_budget.toLocaleString('es')} tokens` : 'tokens (sin límite configurado)'}
+        </span>
+      </div>
+      {pct !== null && (
+        <div className="mt-1 h-1 overflow-hidden rounded-full bg-ink-700">
+          <div className={cx('h-full', near ? 'bg-st-error' : 'bg-accent')} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      <div className="mt-1 text-[10px] text-fg-dim">Se reinicia en {resetsIn(usage.resets_at)} (00:00 UTC)</div>
     </div>
   );
 }

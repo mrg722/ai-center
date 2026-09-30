@@ -220,4 +220,6 @@ export interface AgentView {
   config: AgentConfig;
   sort_order: number;
   agent_definition_id: string | null;
+  /** Only set for paid http-api runtimes; null for free/local/in-process agents. */
+  usage_today: { tokens: number; daily_budget: number | null; resets_at: string } | null;
 }

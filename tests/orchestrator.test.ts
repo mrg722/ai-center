@@ -231,6 +231,19 @@ describe('orchestrator', () => {
     delete process.env.GEMINI_API_KEY;
   });
 
+  it('agentViews reports usage_today (tokens/budget/reset) for paid runtimes, and null for local-bridge ones', async () => {
+    await db.query(`update agents set runtime='gemini', transport='http-api' where id=$1`, [gemini.id]);
+    await db.query(`update projects set settings = settings || '{"daily_token_budget": 1000}'::jsonb where id=$1`, [project.id]);
+    await db.query(`insert into agent_runs (agent_id, status, tokens_in, tokens_out, started_at) values ($1,'SUCCEEDED',30,20,now())`, [gemini.id]);
+    await reload();
+    const views = await agentViews(db, project);
+    const g = views.find((v) => v.slug === 'gemini')!;
+    expect(g.usage_today).toEqual({ tokens: 50, daily_budget: 1000, resets_at: expect.any(String) });
+    expect(new Date(g.usage_today!.resets_at).getTime()).toBeGreaterThan(Date.now());
+    const c = views.find((v) => v.slug === 'claude')!; // local-bridge, not a paid runtime
+    expect(c.usage_today).toBeNull();
+  });
+
   it('deploy always needs approval and needs the deploy permission', async () => {
     await setMode(db, project, user, 'AUTONOMOUS');
     await reload();

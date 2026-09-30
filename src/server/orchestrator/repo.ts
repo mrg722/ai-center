@@ -159,7 +159,7 @@ export async function agentViews(db: Db, project: ProjectRow): Promise<AgentView
   const agents = await listAgentRows(db, project.id);
   if (!agents.length) return [];
   const ids = agents.map((a) => a.id);
-  const [sessions, waiting, perms, grants, capRows] = await Promise.all([
+  const [sessions, waiting, perms, grants, capRows, usageRows] = await Promise.all([
     db.query<SessionRow>(
       `select distinct on (agent_id) * from agent_sessions
         where agent_id = any($1::uuid[]) and ended_at is null order by agent_id, last_heartbeat_at desc`,
@@ -173,11 +173,20 @@ export async function agentViews(db: Db, project: ProjectRow): Promise<AgentView
     Promise.all(ids.map((id) => effectivePermissions(db, id))),
     Promise.all(ids.map((id) => temporaryGrants(db, id))),
     db.query<{ agent_id: string; capability: string }>('select agent_id, capability from agent_capabilities where agent_id = any($1::uuid[])', [ids]),
+    // Same window/definition of "used today" as the paid_api_call gate in hosted.ts —
+    // this is display only, never itself a gating decision.
+    db.query<{ agent_id: string; n: number }>(
+      `select agent_id, coalesce(sum(coalesce(tokens_in,0)+coalesce(tokens_out,0)),0)::int n from agent_runs
+        where agent_id = any($1::uuid[]) and started_at >= date_trunc('day', now()) group by agent_id`,
+      [ids],
+    ),
   ]);
   const caps = new Map<string, string[]>();
   for (const r of capRows.rows) caps.set(r.agent_id, [...(caps.get(r.agent_id) ?? []), r.capability]);
   const sByAgent = new Map(sessions.rows.map((s) => [s.agent_id, s]));
   const waitingSet = new Set(waiting.rows.map((w) => w.agent));
+  const usageByAgent = new Map(usageRows.rows.map((r) => [r.agent_id, r.n]));
+  const resetsAt = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + 1)).toISOString();
   return agents.map((a, i) => {
     const s = sByAgent.get(a.id) ?? null;
     const d = deriveStatus(a, s, waitingSet.has(a.id), project);
@@ -215,6 +224,9 @@ export async function agentViews(db: Db, project: ProjectRow): Promise<AgentView
       config: publicConfig(a.config),
       sort_order: a.sort_order,
       agent_definition_id: a.agent_definition_id,
+      usage_today: rt?.paid
+        ? { tokens: usageByAgent.get(a.id) ?? 0, daily_budget: project.settings.daily_token_budget ?? null, resets_at: resetsAt }
+        : null,
     } satisfies AgentView;
   });
 }
