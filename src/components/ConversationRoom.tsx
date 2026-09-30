@@ -419,7 +419,11 @@ const Composer = memo(function Composer({
         if (cancelled) return;
         setOrModels(r.openrouter.models);
         setOrStatus(r.openrouter.key_status);
-        setOrModel(targetAgent.model || r.openrouter.models[0]?.id || '');
+        const current = targetAgent.model || '';
+        const currentIsFree = current === 'openrouter/free' || r.openrouter.models.some((m) => m.id === current);
+        const nextModel = currentIsFree ? current : (r.openrouter.models[0]?.id || '');
+        setOrModel(nextModel);
+        if (nextModel && nextModel !== current) void applyModel(targetAgent.id, nextModel);
       })
       .catch(() => {
         if (!cancelled) setOrModels([]);
