@@ -317,6 +317,7 @@ const Composer = memo(function Composer({
   const [orQuery, setOrQuery] = useState('');
   const [orModel, setOrModel] = useState('');
   const [orStatus, setOrStatus] = useState<{ limit: number | null; usage: number; limit_remaining: number | null; is_free_tier: boolean; rate_limit: { requests: number; interval: string } | null } | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const agents = snap?.agents ?? [];
 
   /** Persists the picked model on the agent (same control op the Agent Workspace/Inspector use) so it's actually applied, not just shown in the dropdown. */
@@ -434,8 +435,26 @@ const Composer = memo(function Composer({
     return orModels.filter((m) => `${m.id} ${m.name ?? ''}`.toLowerCase().includes(needle));
   }, [orModels, orQuery]);
 
+  const targetLabel = targetAgent?.name ?? (target === 'all' ? 'Todas' : target === 'room' ? 'Nota' : 'Seleccionar');
+  const activeModelLabel = targetAgent?.runtime === 'openrouter'
+    ? (orModels.find((m) => m.id === orModel)?.name ?? orModel || 'Modelo gratis')
+    : targetAgent?.runtime === 'nvidia-nim'
+      ? (nvidiaModels.find((m) => m.id === nvidiaModel)?.id ?? nvidiaModel || 'Modelo NVIDIA')
+      : targetAgent?.model || '';
+
   return (
     <div className="shrink-0 border-t border-line bg-ink-900 p-2 sm:p-3">
+      <div className="mb-1.5 flex min-w-0 items-center gap-1.5 text-xs">
+        <span className="shrink-0 text-fg-dim sm:hidden">Para</span>
+        <button type="button" className="min-w-0 max-w-[45%] truncate rounded border border-line-strong px-2 py-1 text-fg-muted sm:hidden" onClick={() => setShowAdvanced((v) => !v)} title="Mostrar destinatarios y opciones avanzadas">
+          {targetLabel}
+        </button>
+        {activeModelLabel && <span className="min-w-0 flex-1 truncate rounded border border-line px-2 py-1 font-mono text-[10px] text-fg-dim sm:hidden">{activeModelLabel}</span>}
+        <button type="button" className="ml-auto rounded border border-line-strong px-2 py-1 text-fg-muted sm:hidden" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced}>
+          {showAdvanced ? 'Ocultar opciones' : '⚙ Opciones'}
+        </button>
+      </div>
+      <div className={cx('mb-2', showAdvanced ? 'block' : 'hidden sm:block')}>
       <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
         <span className="text-fg-dim">Para</span>
         <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Destinatario">
@@ -531,6 +550,7 @@ const Composer = memo(function Composer({
           )}
         </div>
       )}
+      </div>
       <div className="flex items-end gap-2">
         <textarea
           value={text}
