@@ -420,7 +420,7 @@ const Composer = memo(function Composer({
         setOrModels(r.openrouter.models);
         setOrStatus(r.openrouter.key_status);
         const current = targetAgent.model || '';
-        const currentIsFree = current === 'openrouter/free' || r.openrouter.models.some((m) => m.id === current);
+        const currentIsFree = r.openrouter.models.some((m) => m.id === current);
         const nextModel = currentIsFree ? current : (r.openrouter.models[0]?.id || '');
         setOrModel(nextModel);
         if (nextModel && nextModel !== current) void applyModel(targetAgent.id, nextModel);
