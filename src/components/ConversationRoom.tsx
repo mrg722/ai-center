@@ -413,6 +413,7 @@ const Composer = memo(function Composer({
       setOrStatus(null);
       return;
     }
+    const openRouterAgent = targetAgent;
     let cancelled = false;
     api<{ openrouter: { models: { id: string; name?: string }[]; key_status: typeof orStatus } }>('/api/providers')
       .then((r) => {
@@ -423,7 +424,7 @@ const Composer = memo(function Composer({
         const currentIsFree = r.openrouter.models.some((m) => m.id === current);
         const nextModel = currentIsFree ? current : (r.openrouter.models[0]?.id || '');
         setOrModel(nextModel);
-        if (nextModel && nextModel !== current) void applyModel(targetAgent.id, nextModel);
+        if (nextModel && nextModel !== current) void applyModel(openRouterAgent.id, nextModel);
       })
       .catch(() => {
         if (!cancelled) setOrModels([]);
