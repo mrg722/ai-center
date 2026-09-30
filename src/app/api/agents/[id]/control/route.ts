@@ -10,6 +10,7 @@ import {
   revokeToken,
   setAgentPaused,
   setPermission,
+  setPermissionPolicy,
 } from '@/server/orchestrator/moderator';
 import { drainHostedQueue } from '@/server/orchestrator/hosted';
 import { nvidiaModelAvailable } from '@/server/providers/nvidia';
@@ -71,6 +72,9 @@ export const POST = userRoute<{ id: string }>(
         return { ok: true };
       case 'revoke_temporary':
         await revokeTemporary(db, agent, actor, body.action);
+        return { ok: true };
+      case 'set_permission_policy':
+        await setPermissionPolicy(db, agent, actor, { policy: body.policy, reason: body.reason ?? '' });
         return { ok: true };
     }
   },

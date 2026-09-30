@@ -344,6 +344,11 @@ export const agentControlSchema = z.discriminatedUnion('op', [
     reason: text(500).default(''),
   }),
   z.object({ op: z.literal('revoke_temporary'), action: z.enum(PERMISSION_ACTIONS) }),
+  z.object({
+    op: z.literal('set_permission_policy'),
+    policy: z.enum(['allow_all', 'ask_first']),
+    reason: text(500).default(''),
+  }),
 ]);
 
 export const memoryCreateSchema = z.object({

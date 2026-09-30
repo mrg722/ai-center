@@ -94,16 +94,32 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return <div className="flex h-dvh flex-col overflow-hidden bg-ink-950">
     <header className="sticky top-0 z-40 shrink-0 border-b border-[#202b38] bg-[#080d14]/95 backdrop-blur-xl">
-      <div className="flex h-[60px] items-center gap-3 px-3 lg:px-5">
+      <div className="relative flex h-[60px] items-center gap-3 px-3 lg:px-5">
         <Link href="/" className="flex w-[230px] shrink-0 items-center gap-2.5" aria-label="AI CENTER">
           <Logo/><span><span className="block text-[17px] font-bold tracking-[.04em] text-[#e6edf5]">AI CENTER</span><span className="block text-[9px] tracking-wide text-[#657386]">Multi-AI Agent Platform</span></span>
         </Link>
-        <nav className={cx('flex min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto', menu ? 'flex' : 'hidden md:flex')} aria-label="Navegación principal">
+        <nav className="hidden min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto md:flex" aria-label="Navegación principal">
           {NAV.filter((n) => !n.ownerOnly || snap?.me.role === 'owner').map((n, i) => { const active = i === 0 ? path === '/' : Boolean(n.href && n.href !== '/' && path.startsWith(n.href.split('#')[0])); return n.href ? <Link key={n.label} href={n.href} onClick={() => setMenu(false)} className={cx('flex min-w-[72px] flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 text-[10px] transition', active ? 'bg-[#12346b] text-[#dbeafe]' : 'text-[#7f8da0] hover:bg-[#121b27] hover:text-[#dce6f3]')}><NavIcon d={n.icon}/><span>{n.label}</span></Link> : <span key={n.label} title="Esta sección todavía no tiene una ruta propia implementada" className="flex min-w-[72px] cursor-not-allowed flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 text-[10px] text-[#465466]"><NavIcon d={n.icon}/><span>{n.label}</span></span>; })}
         </nav>
-        <div className="hidden items-center gap-2 lg:flex"><div className="flex h-8 w-40 items-center gap-2 rounded-md border border-[#202b38] bg-[#0c121a] px-2.5 text-[10px] text-[#647286]"><span>⌕</span>Buscar…</div><div className="relative rounded-md p-2 text-[#9aa7b7]" aria-label="Notificaciones"><span>♧</span><i className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#ef4444]"/></div></div>
+        <div className="hidden flex-1 items-center gap-2 lg:flex"><div className="flex h-8 w-40 items-center gap-2 rounded-md border border-[#202b38] bg-[#0c121a] px-2.5 text-[10px] text-[#647286]"><span>⌕</span>Buscar…</div><div className="relative rounded-md p-2 text-[#9aa7b7]" aria-label="Notificaciones"><span>♧</span><i className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#ef4444]"/></div></div>
         <div className="hidden items-center gap-2 sm:flex"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6d3fd1] text-[12px] font-semibold text-white">{snap?.me.display_name?.slice(0,1).toUpperCase() ?? 'M'}</div><div className="hidden xl:block"><div className="text-[10px] font-medium">{snap?.me.display_name ?? 'Usuario'}</div><div className="text-[8px] text-[#718096]">{snap?.me.role ?? 'Owner'}</div></div><button onClick={logout} className="text-[#718096] hover:text-white" aria-label="Cerrar sesión">⌄</button></div>
-        <button className="rounded-md p-2 text-[#8b98a9] md:hidden" onClick={() => setMenu(v=>!v)} aria-label="Menú">☰</button>
+        <button className="ml-auto rounded-md p-2 text-[#8b98a9] md:hidden" onClick={() => setMenu((v) => !v)} aria-haspopup="true" aria-expanded={menu} aria-label="Menú">☰</button>
+        {menu && (
+          <>
+            <button
+              className="fixed inset-0 z-40 cursor-default bg-black/40 md:hidden"
+              onClick={() => setMenu(false)}
+              aria-label="Cerrar menú"
+              tabIndex={-1}
+            />
+            <nav
+              className="absolute right-3 top-[52px] z-50 flex w-60 max-w-[calc(100vw-1.5rem)] flex-col gap-0.5 rounded-lg border border-[#202b38] bg-[#0c121a] p-1.5 shadow-2xl md:hidden"
+              aria-label="Navegación principal"
+            >
+              {NAV.filter((n) => !n.ownerOnly || snap?.me.role === 'owner').map((n, i) => { const active = i === 0 ? path === '/' : Boolean(n.href && n.href !== '/' && path.startsWith(n.href.split('#')[0])); return n.href ? <Link key={n.label} href={n.href} onClick={() => setMenu(false)} className={cx('flex items-center gap-2 rounded-md px-2.5 py-2 text-[12px] transition', active ? 'bg-[#12346b] text-[#dbeafe]' : 'text-[#7f8da0] hover:bg-[#121b27] hover:text-[#dce6f3]')}><NavIcon d={n.icon}/><span>{n.label}</span></Link> : <span key={n.label} title="Esta sección todavía no tiene una ruta propia implementada" className="flex cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-2 text-[12px] text-[#465466]"><NavIcon d={n.icon}/><span>{n.label}</span></span>; })}
+            </nav>
+          </>
+        )}
       </div>
       <div className="flex items-center gap-2 border-t border-[#18212c] px-3 py-1.5 lg:px-5">
         <span className="text-[9px] text-[#657386]">PROJECT</span><span className="truncate text-[10px] font-semibold">{snap?.project.name ?? 'Cargando…'}</span><span className="text-[9px] text-[#657386]">{snap?.project.repo ?? 'sin repo'}</span><span className="ml-auto flex items-center gap-1.5 text-[9px]" style={{color:global.color}}><span className="h-1.5 w-1.5 rounded-full" style={{background:global.color}}/>{global.label}</span><span className={connected ? 'text-st-online' : 'text-st-error'}>{connected ? '● LIVE' : '○ …'}</span><div className="hidden md:flex rounded border border-[#202b38] bg-[#0c121a]">{MODES.map(m=><button key={m.id} title={m.hint} onClick={()=>setMode(m.id)} className={cx('px-2 py-1 text-[8px]',snap?.project.mode===m.id?'bg-[#1b2c44] text-white':'text-[#687588]')}>{m.label}</button>)}</div><Button variant={snap?.project.halted ? 'accent' : 'danger'} size="sm" onClick={toggleStop} disabled={!snap||busy} data-testid="stop-all">{snap?.project.halted?'▶ REANUDAR':'■ DETENER TODO'}</Button>
