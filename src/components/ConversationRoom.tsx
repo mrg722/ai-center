@@ -460,9 +460,9 @@ const Composer = memo(function Composer({
 
   return (
     <div className="shrink-0 border-t border-line bg-ink-900 p-2 sm:p-3">
-      <div className="mb-1 flex min-w-0 items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+      <div className="mb-1 flex min-w-0 items-center gap-1.5 overflow-x-auto pb-1 text-xs sm:flex-wrap sm:overflow-x-visible">
         <span className="text-fg-dim">Para</span>
-        <div className="flex min-w-max flex-nowrap gap-1" role="radiogroup" aria-label="Destinatario">
+        <div className="flex min-w-max flex-nowrap gap-1 sm:min-w-0 sm:flex-wrap" role="radiogroup" aria-label="Destinatario">
           {agents.map((a) => (
             <button
               key={a.id}
@@ -494,12 +494,19 @@ const Composer = memo(function Composer({
         <div className="mb-1 flex min-w-0 flex-wrap items-center gap-1 overflow-x-auto pb-0.5">
           <span className="shrink-0 text-[10px] text-fg-dim">Skills</span>
           {selectedSkills.map((s) => (
-            <span key={s.id} className="flex shrink-0 items-center gap-1 rounded border border-accent/40 bg-accent-soft px-1.5 py-0.5 text-[10px] text-accent">
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => toggleSkill(s)}
+              aria-pressed="true"
+              title="Clic para quitar esta skill"
+              className="flex shrink-0 items-center gap-1 rounded border border-accent/40 bg-accent-soft px-1.5 py-0.5 text-[10px] text-accent hover:bg-accent/25"
+            >
               {s.name}
-              <button onClick={() => toggleSkill(s)} aria-label={`Quitar skill ${s.name}`} className="hover:text-fg">
+              <span aria-label={`Quitar skill ${s.name}`} className="hover:text-fg">
                 ×
-              </button>
-            </span>
+              </span>
+            </button>
           ))}
           <button onClick={() => setSkillPickerOpen(true)} className="shrink-0 rounded border border-line-strong px-1.5 py-0.5 text-[10px] text-fg-muted hover:bg-ink-800 hover:text-fg">
             + Añadir Skill
